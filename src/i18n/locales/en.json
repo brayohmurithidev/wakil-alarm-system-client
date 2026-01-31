@@ -1,0 +1,18 @@
+{
+  "dashboard": {
+    "title": "Wakil Alarm Dashboard",
+    "connected": "Connected",
+    "disconnected": "Disconnected"
+  },
+  "map": {
+    "title": "Alarm Locations",
+    "loading": "Loading map..."
+  },
+  "alarms": {
+    "title": "Active Alarms",
+    "loading": "Loading alarms...",
+    "noAlarms": "No active alarms",
+    "location": "Location",
+    "error": "Error loading alarms"
+  }
+}
