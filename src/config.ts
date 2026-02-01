@@ -16,7 +16,7 @@ const configs: Record<Environment, Config> = {
   },
   production: {
     environment: "production",
-    apiUrl: "not yet ready now",
+    apiUrl: "not yet ready",
   },
 };
 
