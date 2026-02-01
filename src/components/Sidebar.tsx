@@ -29,12 +29,10 @@ export function Sidebar() {
 
   return (
     <div className="flex h-screen w-64 flex-col bg-card border-r border-border">
-      {/* Logo */}
       <div className="p-6 border-b border-border">
         <img src={wakilGoldLogo} alt="Wakil" className="h-16 w-auto" />
       </div>
 
-      {/* Navigation */}
       <nav className="flex-1 p-4 space-y-2">
         {navItems.map((item) => (
           <Link
@@ -52,7 +50,6 @@ export function Sidebar() {
         ))}
       </nav>
 
-      {/* User Info & Logout */}
       <div className="p-4 border-t border-border space-y-3">
         <div className="px-4 py-2">
           <Body size="sm" className="text-muted-foreground">

@@ -6,6 +6,7 @@ import { useGetAlarms } from "@/api/hooks/useGetAlarms";
 import { AlarmList } from "@/components/AlarmList";
 import { AlarmMap } from "@/components/AlarmMap";
 import { ConnectionStatus } from "@/components/ConnectionStatus";
+import { DashboardIcon } from "@/components/icons/DashboardIcon";
 import { Loading } from "@/components/Loading";
 import { Body, Heading } from "@/components/ui";
 
@@ -48,26 +49,26 @@ export function Dashboard() {
   }, [refetch]);
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto p-4">
-        <div className="flex items-center justify-between mb-4">
-          <Heading size="xxl">{t("dashboard.title")}</Heading>
-          <ConnectionStatus connected={connected} />
+    <div className="h-screen bg-background flex flex-col w-full">
+      <div className="flex items-center justify-between p-8">
+        <div className="flex items-center gap-2 text-white ">
+          <DashboardIcon size={30} />
+          <Heading size="xxl" className="text-3xl">
+            {t("dashboard.title")}
+          </Heading>
         </div>
-        <div className="flex flex-col lg:flex-row gap-6">
-          <div className="flex-2 bg-card rounded-lg shadow-md p-6">
-            <Heading size="xl" className="mb-4">
-              {t("map.title")}
-            </Heading>
-            {isLoading && <Loading text={t("map.loading")} />}
-            {error && (
-              <Body className="text-destructive">
-                {t("alarms.error")}: {error.message}
-              </Body>
-            )}
-            <AlarmMap alarms={alarms || []} />
+
+        <ConnectionStatus connected={connected} />
+      </div>
+
+      <div className="flex-1 overflow-hidden">
+        <div className="flex flex-col lg:flex-row h-full bg-card">
+          <div className="flex-3 rounded-lg shadow-md p-2 flex flex-col">
+            <div className="flex-1 min-h-0">
+              <AlarmMap alarms={alarms || []} />
+            </div>
           </div>
-          <div className="flex-1 bg-card rounded-lg shadow-md p-6">
+          <div className="flex-1 rounded-lg shadow-md p-6 flex flex-col">
             <Heading size="xl" className="mb-4">
               {t("alarms.title")}
             </Heading>
@@ -86,7 +87,9 @@ export function Dashboard() {
               </Body>
             )}
 
-            {alarms && alarms.length > 0 && <AlarmList alarms={alarms} />}
+            <div className="flex-1 overflow-y-auto">
+              {alarms && alarms.length > 0 && <AlarmList alarms={alarms} />}
+            </div>
           </div>
         </div>
       </div>
