@@ -9,6 +9,7 @@ import { ConnectionStatus } from "@/components/ConnectionStatus";
 import { DashboardIcon } from "@/components/icons/DashboardIcon";
 import { Loading } from "@/components/Loading";
 import { Body, Heading } from "@/components/ui";
+import { apiUrl } from "@/config";
 
 export function Dashboard() {
   const { t } = useTranslation();
@@ -17,7 +18,7 @@ export function Dashboard() {
 
   useEffect(() => {
     // Connect to WebSocket server
-    const socket = io("http://localhost:3000");
+    const socket = io(apiUrl);
 
     socket.on("connect", () => {
       console.log("Connected to server!");
