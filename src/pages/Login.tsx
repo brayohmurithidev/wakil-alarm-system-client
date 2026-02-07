@@ -58,7 +58,7 @@ export function Login() {
         <div className="w-full max-w-md">
           <div className="bg-card rounded-lg shadow-lg p-8">
             <Heading size="xl" className="mb-2 text-center">
-              {t("login.title", "Guard Login")}
+              {t("login.title", "Admin Login")}
             </Heading>
             <Body className="text-muted-foreground text-center mb-6">
               {t("login.subtitle", "Sign in to access the dashboard")}
@@ -85,7 +85,7 @@ export function Login() {
                   id="email"
                   type="email"
                   {...form.register("email")}
-                  placeholder={t("login.emailPlaceholder", "guard@example.com")}
+                  placeholder={t("login.emailPlaceholder", "admin@example.com")}
                   disabled={isPending}
                 />
                 <FieldError errors={[form.formState.errors.email]} />

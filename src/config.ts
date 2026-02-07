@@ -12,7 +12,7 @@ const configs: Record<Environment, Config> = {
   },
   staging: {
     environment: "staging",
-    apiUrl: "https://wakil-api-staging.up.railway.app",
+    apiUrl: "https://api-staging.wakilsecurity.com",
   },
   production: {
     environment: "production",
@@ -20,7 +20,8 @@ const configs: Record<Environment, Config> = {
   },
 };
 
-const environment = import.meta.env.VITE_ENVIRONMENT as Environment;
+const environment =
+  (import.meta.env.VITE_ENVIRONMENT as Environment) ?? "staging";
 const { apiUrl } = configs[environment];
 
 export { apiUrl, environment };

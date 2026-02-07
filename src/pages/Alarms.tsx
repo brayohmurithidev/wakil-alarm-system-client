@@ -1,9 +1,11 @@
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 
 import { useGetAlarms } from "@/api/hooks/useGetAlarms";
 import { useUpdateAlarmStatus } from "@/api/hooks/useUpdateAlarmStatus";
-import { Loading } from "@/components/Loading";
-import { Body, Button, Heading } from "@/components/ui";
+import { AlarmIcon } from "@/components/icons/AlarmIcon";
+import { PageHeader } from "@/components/PageHeader";
+import { Body, Button } from "@/components/ui";
 
 export function Alarms() {
   const { t } = useTranslation();
@@ -20,22 +22,7 @@ export function Alarms() {
 
   return (
     <div className="min-w-7xl">
-      <Heading size="xxl" className="mb-6">
-        {t("alarms.title", "Alarms")}
-      </Heading>
-
-      {isLoading && <Loading text={t("alarms.loading")} />}
-
-      {error && (
-        <Body className="text-destructive">
-          {t("alarms.error")}: {error.message}
-        </Body>
-      )}
-
-      {alarms && alarms.length === 0 && (
-        <Body className="text-muted-foreground">{t("alarms.noAlarms")}</Body>
-      )}
-
+      <PageHeader title={t("alarms.title")} icon={<AlarmIcon size={30} />} />
       {alarms && alarms.length > 0 && (
         <div className="bg-card rounded-lg shadow-md overflow-hidden">
           <div className="overflow-x-auto">
@@ -66,7 +53,11 @@ export function Alarms() {
                 {alarms.map((alarm) => (
                   <tr key={alarm.id} className="hover:bg-muted/50">
                     <td className="px-6 py-4">
-                      <Body className="font-medium">{alarm.userName}</Body>
+                      <Link to={`/alarms/${alarm.id}`}>
+                        <Body className="font-medium text-primary hover:underline cursor-pointer">
+                          {alarm.userName}
+                        </Body>
+                      </Link>
                     </td>
                     <td className="px-6 py-4">
                       <Body>{alarm.userPhone}</Body>

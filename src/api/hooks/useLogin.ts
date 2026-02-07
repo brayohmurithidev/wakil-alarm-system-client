@@ -12,7 +12,7 @@ type LoginParams = {
 type LoginResponse = {
   message: string;
   token: string;
-  guard: {
+  adminUser: {
     id: string;
     email: string;
     name: string;
@@ -30,14 +30,14 @@ const loginFn = async (params: LoginParams): Promise<LoginResponse> => {
 
 export const useLogin = () => {
   const navigate = useNavigate();
-  const { setGuard } = useAuth();
+  const { setAdminUser } = useAuth();
 
   return useMutation({
     mutationFn: loginFn,
     onSuccess: (data) => {
       localStorage.setItem("token", data.token);
-      localStorage.setItem("guard", JSON.stringify(data.guard));
-      setGuard(data.guard);
+      localStorage.setItem("adminUser", JSON.stringify(data.adminUser));
+      setAdminUser(data.adminUser);
       navigate("/dashboard");
     },
   });

@@ -1,3 +1,4 @@
+import { AlarmDetail } from "@/pages/AlarmDetail";
 import { Alarms } from "@/pages/Alarms";
 import { Dashboard } from "@/pages/Dashboard";
 import { Login } from "@/pages/Login";
@@ -21,6 +22,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoutes>
             <Alarms />
+          </ProtectedRoutes>
+        }
+      />
+      <Route
+        path="/alarms/:id"
+        element={
+          <ProtectedRoutes>
+            <AlarmDetail />
           </ProtectedRoutes>
         }
       />

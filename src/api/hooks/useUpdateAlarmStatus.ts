@@ -33,8 +33,9 @@ export const useUpdateAlarmStatus = () => {
 
   return useMutation({
     mutationFn: updateAlarmStatus,
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: [queryKeys.alarms] });
+      queryClient.invalidateQueries({ queryKey: [queryKeys.alarm, data.alarm.id] });
     },
   });
 };

@@ -1,7 +1,7 @@
 import axiosInstance from "@/lib/axios";
 import { createContext, useContext, useEffect, useState } from "react";
 
-type Guard = {
+type AdminUser = {
   id: string;
   email: string;
   name: string;
@@ -9,26 +9,26 @@ type Guard = {
 };
 
 type AuthContextType = {
-  guard: Guard | null;
+  adminUser: AdminUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  setGuard: (guard: Guard) => void;
+  setAdminUser: (adminUser: AdminUser) => void;
   logout: () => void;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [guard, setGuard] = useState<Guard | null>(null);
+  const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const storedGuard = localStorage.getItem("guard");
+    const storedAdminUser = localStorage.getItem("adminUser");
     const storedToken = localStorage.getItem("token");
 
-    if (storedGuard && storedToken) {
-      setGuard(JSON.parse(storedGuard));
+    if (storedAdminUser && storedToken) {
+      setAdminUser(JSON.parse(storedAdminUser));
     }
 
     setIsLoading(false);
@@ -40,28 +40,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       password,
     });
 
-    const { token, guard: guardData } = response.data;
+    const { token, adminUser: adminUserData } = response.data;
 
     localStorage.setItem("token", token);
-    localStorage.setItem("guard", JSON.stringify(guardData));
+    localStorage.setItem("adminUser", JSON.stringify(adminUserData));
 
-    setGuard(guardData);
+    setAdminUser(adminUserData);
   };
 
   const logout = () => {
     localStorage.removeItem("token");
-    localStorage.removeItem("guard");
-    setGuard(null);
+    localStorage.removeItem("adminUser");
+    setAdminUser(null);
   };
 
   return (
     <AuthContext.Provider
       value={{
-        guard,
-        isAuthenticated: !!guard,
+        adminUser,
+        isAuthenticated: !!adminUser,
         isLoading,
         login,
-        setGuard,
+        setAdminUser,
         logout,
       }}
     >

@@ -5,9 +5,9 @@ import { io } from "socket.io-client";
 import { useGetAlarms } from "@/api/hooks/useGetAlarms";
 import { AlarmList } from "@/components/AlarmList";
 import { AlarmMap } from "@/components/AlarmMap";
-import { ConnectionStatus } from "@/components/ConnectionStatus";
 import { DashboardIcon } from "@/components/icons/DashboardIcon";
 import { Loading } from "@/components/Loading";
+import { PageHeader } from "@/components/PageHeader";
 import { Body, Heading } from "@/components/ui";
 import { apiUrl } from "@/config";
 
@@ -17,7 +17,6 @@ export function Dashboard() {
   const { data: alarms, isLoading, error, refetch } = useGetAlarms();
 
   useEffect(() => {
-    // Connect to WebSocket server
     const socket = io(apiUrl);
 
     socket.on("connect", () => {
@@ -30,17 +29,13 @@ export function Dashboard() {
       setConnected(false);
     });
 
-    // Listen for new alarms
     socket.on("alarm:created", (newAlarm) => {
       console.log("New alarm received!", newAlarm);
-      // Refetch the alarm list to show the new alarm
       refetch();
     });
 
-    // Listen for location updates
     socket.on("alarm:location-updated", (update) => {
       console.log("Location updated!", update);
-      // Refetch to show updated location
       refetch();
     });
 
@@ -51,17 +46,10 @@ export function Dashboard() {
 
   return (
     <div className="h-screen bg-background flex flex-col w-full">
-      <div className="flex items-center justify-between p-8">
-        <div className="flex items-center gap-2 text-white ">
-          <DashboardIcon size={30} />
-          <Heading size="xxl" className="text-3xl">
-            {t("dashboard.title")}
-          </Heading>
-        </div>
-
-        <ConnectionStatus connected={connected} />
-      </div>
-
+      <PageHeader
+        title={t("dashboard.title")}
+        icon={<DashboardIcon size={30} />}
+      />
       <div className="flex-1 overflow-hidden">
         <div className="flex flex-col lg:flex-row h-full bg-card">
           <div className="flex-3 rounded-lg shadow-md p-2 flex flex-col">

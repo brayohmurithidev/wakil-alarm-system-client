@@ -10,7 +10,7 @@ import { DashboardIcon } from "./icons/DashboardIcon";
 export function Sidebar() {
   const { t } = useTranslation();
   const location = useLocation();
-  const { guard, logout } = useAuth();
+  const { adminUser, logout } = useAuth();
 
   const navItems = [
     {
@@ -55,9 +55,9 @@ export function Sidebar() {
           <Body size="sm" className="text-muted-foreground">
             {t("sidebar.signedInAs", "Signed in as")}
           </Body>
-          <Body className="font-medium truncate">{guard?.name}</Body>
+          <Body className="font-medium truncate">{adminUser?.name}</Body>
           <Body size="sm" className="text-muted-foreground truncate">
-            {guard?.email}
+            {adminUser?.email}
           </Body>
         </div>
         <Button variant="outline" className="w-full" onClick={logout}>

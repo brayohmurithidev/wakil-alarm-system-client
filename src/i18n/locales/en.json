@@ -9,7 +9,8 @@
     "loading": "Loading map..."
   },
   "alarms": {
-    "title": "Active Alarms",
+    "title": "Alarms",
+    "active": "Active Alarms",
     "loading": "Loading alarms...",
     "noAlarms": "No active alarms",
     "location": "Location",

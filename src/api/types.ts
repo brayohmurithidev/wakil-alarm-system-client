@@ -24,3 +24,7 @@ export type Alarm = {
 export type AlarmsResponse = {
   alarms: Alarm[];
 };
+
+export type AlarmResponse = {
+  alarm: Alarm;
+};
