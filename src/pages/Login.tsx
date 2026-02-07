@@ -1,6 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
+import { Navigate } from "react-router-dom";
 import { z } from "zod";
 
 import { useLogin } from "@/api/hooks/useLogin";
@@ -14,6 +15,7 @@ import {
   Heading,
   Input,
 } from "@/components/ui";
+import { useAuth } from "@/contexts/AuthContext";
 
 const formSchema = z.object({
   email: z
@@ -29,7 +31,12 @@ type FormData = z.infer<typeof formSchema>;
 
 export function Login() {
   const { t } = useTranslation();
+  const { isAuthenticated } = useAuth();
   const { mutate: login, isPending, error } = useLogin();
+
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
