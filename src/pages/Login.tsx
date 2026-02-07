@@ -34,10 +34,6 @@ export function Login() {
   const { isAuthenticated } = useAuth();
   const { mutate: login, isPending, error } = useLogin();
 
-  if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -47,6 +43,10 @@ export function Login() {
     mode: "onSubmit",
     reValidateMode: "onSubmit",
   });
+
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   const handleSubmit = (data: FormData) => {
     login(data, {
