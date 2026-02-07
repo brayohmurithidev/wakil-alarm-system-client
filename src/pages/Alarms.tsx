@@ -9,7 +9,7 @@ import { Body, Button } from "@/components/ui";
 
 export function Alarms() {
   const { t } = useTranslation();
-  const { data: alarms, isLoading, error } = useGetAlarms();
+  const { data: alarms } = useGetAlarms();
   const { mutate: updateStatus } = useUpdateAlarmStatus();
 
   const handleStatusChange = (alarmId: string, status: string) => {
