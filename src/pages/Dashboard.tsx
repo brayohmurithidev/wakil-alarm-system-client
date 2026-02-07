@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { io } from "socket.io-client";
 
@@ -13,7 +13,6 @@ import { apiUrl } from "@/config";
 
 export function Dashboard() {
   const { t } = useTranslation();
-  const [connected, setConnected] = useState(false);
   const { data: alarms, isLoading, error, refetch } = useGetAlarms();
 
   useEffect(() => {
@@ -21,12 +20,10 @@ export function Dashboard() {
 
     socket.on("connect", () => {
       console.log("Connected to server!");
-      setConnected(true);
     });
 
     socket.on("disconnect", () => {
       console.log("Disconnected from server");
-      setConnected(false);
     });
 
     socket.on("alarm:created", (newAlarm) => {
