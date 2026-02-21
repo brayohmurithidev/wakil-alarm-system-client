@@ -11,9 +11,10 @@ export const Loading = ({ size = 50, className, text }: LoadingProps) => {
   return (
     <div
       className={clsx(
-        "flex flex-col items-center justify-center gap-2",
-        className
+        "flex min-h-screen text-white shrink-0 items-center justify-center py-16",
+        className,
       )}
+      data-testid="loading-spinner"
     >
       <LoaderIcon
         width={size}

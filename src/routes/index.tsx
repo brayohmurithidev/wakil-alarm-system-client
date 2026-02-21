@@ -1,6 +1,7 @@
 import { AlarmDetail } from "@/pages/AlarmDetail";
 import { Alarms } from "@/pages/Alarms";
 import { Dashboard } from "@/pages/Dashboard";
+import { Guards } from "@/pages/Guards";
 import { Login } from "@/pages/Login";
 import { Navigate, Route, Routes } from "react-router-dom";
 import ProtectedRoutes from "./ProtectedRoutes";
@@ -30,6 +31,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoutes>
             <AlarmDetail />
+          </ProtectedRoutes>
+        }
+      />
+      <Route
+        path="/guards"
+        element={
+          <ProtectedRoutes>
+            <Guards />
           </ProtectedRoutes>
         }
       />

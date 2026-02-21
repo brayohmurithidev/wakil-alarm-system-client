@@ -7,6 +7,16 @@ export type AlarmLocation = {
   timestamp: string;
 };
 
+export type Guard = {
+  id: string;
+  name: string;
+  phone: string;
+  email: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type Alarm = {
   id: string;
   latitude: number;
@@ -16,6 +26,8 @@ export type Alarm = {
   userPhone: string;
   userImage?: string | null;
   status: AlarmStatus;
+  guardId?: string | null;
+  guard?: Guard | null;
   createdAt: string;
   updatedAt: string;
   locations: AlarmLocation[];

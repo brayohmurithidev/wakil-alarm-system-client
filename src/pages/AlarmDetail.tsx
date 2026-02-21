@@ -5,11 +5,20 @@ import { MapContainer, Marker, Polyline, TileLayer } from "react-leaflet";
 import { useParams, useNavigate } from "react-router-dom";
 
 import { useGetAlarm } from "@/api/hooks/useGetAlarm";
-import { useUpdateAlarmStatus } from "@/api/hooks/useUpdateAlarmStatus";
+import { useGetGuards } from "@/api/hooks/useGetGuards";
+import { useUpdateAlarm } from "@/api/hooks/useUpdateAlarm";
+import type { AlarmStatus } from "@/api/types";
 import { AlarmIcon } from "@/components/icons/AlarmIcon";
 import { Loading } from "@/components/Loading";
 import { PageHeader } from "@/components/PageHeader";
 import { Body, Button, Heading } from "@/components/ui";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/DropdownMenu";
 
 import icon from "leaflet/dist/images/marker-icon.png";
 import iconShadow from "leaflet/dist/images/marker-shadow.png";
@@ -28,11 +37,18 @@ export function AlarmDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data: alarm, isLoading, error } = useGetAlarm(id || "");
-  const { mutate: updateStatus } = useUpdateAlarmStatus();
+  const { data: guards } = useGetGuards();
+  const { mutate: updateAlarm } = useUpdateAlarm();
 
-  const handleStatusChange = (status: string) => {
+  const handleStatusChange = (status: AlarmStatus) => {
     if (id) {
-      updateStatus({ id, status });
+      updateAlarm({ id, status });
+    }
+  };
+
+  const handleGuardAssign = (guardId: string) => {
+    if (id) {
+      updateAlarm({ id, guardId });
     }
   };
 
@@ -161,6 +177,36 @@ export function AlarmDetail() {
                   </Body>
                 </div>
 
+                <div>
+                  <Body size="sm" className="text-muted-foreground mb-2">
+                    {t("alarmDetail.assignedGuard", "Assigned Guard")}
+                  </Body>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" className="w-full justify-start">
+                        {alarm.guard
+                          ? alarm.guard.name
+                          : t("alarmDetail.selectGuard", "Select Guard")}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-full">
+                      <DropdownMenuRadioGroup
+                        value={alarm.guardId || ""}
+                        onValueChange={handleGuardAssign}
+                      >
+                        {guards?.map((guard) => (
+                          <DropdownMenuRadioItem
+                            key={guard.id}
+                            value={guard.id}
+                          >
+                            {guard.name}
+                          </DropdownMenuRadioItem>
+                        ))}
+                      </DropdownMenuRadioGroup>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+
                 {alarm.status !== "closed" && alarm.status !== "cancelled" && (
                   <div className="pt-4 border-t border-border">
                     <Body size="sm" className="text-muted-foreground mb-2">
@@ -170,17 +216,23 @@ export function AlarmDetail() {
                       {alarm.status === "pending" && (
                         <Button
                           variant="outline"
-                          onClick={() => handleStatusChange("open")}
+                          onClick={() =>
+                            handleStatusChange("open" as AlarmStatus)
+                          }
                         >
                           {t("alarms.escalate", "Escalate")}
                         </Button>
                       )}
-                      <Button onClick={() => handleStatusChange("closed")}>
+                      <Button
+                        onClick={() => handleStatusChange("closed" as AlarmStatus)}
+                      >
                         {t("alarms.close", "Close")}
                       </Button>
                       <Button
                         variant="outline"
-                        onClick={() => handleStatusChange("cancelled")}
+                        onClick={() =>
+                          handleStatusChange("cancelled" as AlarmStatus)
+                        }
                       >
                         {t("alarms.cancel", "Cancel")}
                       </Button>

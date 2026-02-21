@@ -24,5 +24,7 @@ const environment =
   (import.meta.env.VITE_ENVIRONMENT as Environment) ?? "staging";
 const { apiUrl } = configs[environment];
 
-export { apiUrl, environment };
+const apiKey = import.meta.env.VITE_API_KEY || "";
+
+export { apiUrl, apiKey, environment };
 export type { Environment };

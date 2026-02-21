@@ -15,5 +15,14 @@
     "noAlarms": "No active alarms",
     "location": "Location",
     "error": "Error loading alarms"
+  },
+  "alarmNotification": {
+    "title": "EMERGENCY ALARM",
+    "subtitle": "New alarm triggered",
+    "location": "Location",
+    "time": "Time",
+    "status": "Status",
+    "acknowledge": "Acknowledge",
+    "acknowledging": "Acknowledging..."
   }
 }

@@ -1,6 +1,7 @@
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
+import { useEffect } from "react";
+import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
 
 import type { Alarm } from "@/api/types";
 
@@ -19,9 +20,34 @@ L.Marker.prototype.options.icon = DefaultIcon;
 
 type AlarmMapProps = {
   alarms: Alarm[];
+  focusedAlarmId?: string | null;
 };
 
-export function AlarmMap({ alarms }: AlarmMapProps) {
+// Component to handle map focus/zoom
+function MapFocusHandler({
+  alarms,
+  focusedAlarmId,
+}: {
+  alarms: Alarm[];
+  focusedAlarmId?: string | null;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (focusedAlarmId) {
+      const alarm = alarms.find((a) => a.id === focusedAlarmId);
+      if (alarm) {
+        map.flyTo([alarm.latitude, alarm.longitude], 16, {
+          duration: 1.5,
+        });
+      }
+    }
+  }, [focusedAlarmId, alarms, map]);
+
+  return null;
+}
+
+export function AlarmMap({ alarms, focusedAlarmId }: AlarmMapProps) {
   // Default center (Nairobi, Kenya)
   const defaultCenter: [number, number] = [-1.2921, 36.8219];
 
@@ -41,6 +67,7 @@ export function AlarmMap({ alarms }: AlarmMapProps) {
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
+      <MapFocusHandler alarms={alarms} focusedAlarmId={focusedAlarmId} />
       {alarms.map((alarm) => (
         <Marker key={alarm.id} position={[alarm.latitude, alarm.longitude]}>
           <Popup>
