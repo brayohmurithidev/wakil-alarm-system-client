@@ -1,4 +1,5 @@
 import clsx from "clsx";
+
 import { LoaderIcon } from "./icons";
 
 type LoadingProps = {

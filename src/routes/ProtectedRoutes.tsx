@@ -1,7 +1,8 @@
+import { Navigate } from "react-router-dom";
+
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Loading } from "@/components/Loading";
 import { useAuth } from "@/contexts/AuthContext";
-import { Navigate } from "react-router-dom";
 
 type ProtectedRouteProps = {
   children: React.ReactNode;

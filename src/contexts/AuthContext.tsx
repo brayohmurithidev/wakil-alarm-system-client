@@ -1,12 +1,7 @@
-import axiosInstance from "@/lib/axios";
 import { createContext, useContext, useEffect, useState } from "react";
 
-type AdminUser = {
-  id: string;
-  email: string;
-  name: string;
-  phone: string;
-};
+import type { AdminUser } from "@/api/types";
+import axiosInstance from "@/lib/axios";
 
 type AuthContextType = {
   adminUser: AdminUser | null;

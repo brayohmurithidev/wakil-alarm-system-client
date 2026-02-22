@@ -1,13 +1,16 @@
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
+import clsx from "clsx";
+import { ChevronDown, Loader2, UserPlus } from "lucide-react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { MapContainer, Marker, Polyline, TileLayer } from "react-leaflet";
-import { useParams, useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 import { useGetAlarm } from "@/api/hooks/useGetAlarm";
 import { useGetGuards } from "@/api/hooks/useGetGuards";
 import { useUpdateAlarm } from "@/api/hooks/useUpdateAlarm";
 import type { AlarmStatus } from "@/api/types";
+import { AlarmMap } from "@/components/AlarmMap";
+import { notify } from "@/components/Alert/notify";
+import { FormSelect } from "@/components/FormGroup/FormGroup";
 import { AlarmIcon } from "@/components/icons/AlarmIcon";
 import { Loading } from "@/components/Loading";
 import { PageHeader } from "@/components/PageHeader";
@@ -20,35 +23,35 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/DropdownMenu";
 
-import icon from "leaflet/dist/images/marker-icon.png";
-import iconShadow from "leaflet/dist/images/marker-shadow.png";
-
-const DefaultIcon = L.icon({
-  iconUrl: icon,
-  shadowUrl: iconShadow,
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-});
-
-L.Marker.prototype.options.icon = DefaultIcon;
-
 export function AlarmDetail() {
   const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data: alarm, isLoading, error } = useGetAlarm(id || "");
   const { data: guards } = useGetGuards();
-  const { mutate: updateAlarm } = useUpdateAlarm();
+  const [isUpdatingGuard, setIsUpdatingGuard] = useState(false);
+  const { mutate: updateAlarm } = useUpdateAlarm({
+    onSuccess: (response) => {
+      setIsUpdatingGuard(false);
+      notify(
+        response.message || t("alarmDetail.updateSuccess", "Alarm updated successfully"),
+        { type: "success" }
+      );
+    },
+    onError: (error: any) => {
+      setIsUpdatingGuard(false);
+      notify(
+        error?.response?.data?.message ||
+          error?.response?.data?.error ||
+          t("alarmDetail.updateError", "Failed to update alarm"),
+        { type: "error" }
+      );
+    },
+  });
 
   const handleStatusChange = (status: AlarmStatus) => {
     if (id) {
       updateAlarm({ id, status });
-    }
-  };
-
-  const handleGuardAssign = (guardId: string) => {
-    if (id) {
-      updateAlarm({ id, guardId });
     }
   };
 
@@ -59,15 +62,15 @@ export function AlarmDetail() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "pending":
-        return "bg-warning/30 text-warning";
+        return "bg-orange-100 text-orange-800 border-orange-300";
       case "open":
-        return "bg-destructive/10 text-destructive";
+        return "bg-green-100 text-green-800 border-green-300";
       case "closed":
-        return "bg-green-500/10 text-green-600";
+        return "bg-gray-100 text-gray-800 border-gray-300";
       case "cancelled":
-        return "bg-gray-500/10 text-gray-600";
+        return "bg-red-100 text-red-800 border-red-300";
       default:
-        return "bg-yellow-500/10 text-yellow-600";
+        return "bg-gray-100 text-gray-800 border-gray-300";
     }
   };
 
@@ -106,13 +109,6 @@ export function AlarmDetail() {
     );
   }
 
-  const locationTrail: [number, number][] = alarm.locations.map((loc) => [
-    loc.latitude,
-    loc.longitude,
-  ]);
-
-  const center: [number, number] = [alarm.latitude, alarm.longitude];
-
   return (
     <div className="h-screen bg-background flex flex-col w-full">
       <PageHeader
@@ -143,13 +139,54 @@ export function AlarmDetail() {
                     <Body size="sm" className="text-muted-foreground">
                       {t("alarmDetail.user", "User")}
                     </Body>
-                    <Body className="font-medium text-lg">{alarm.userName}</Body>
+                    <Body className="font-medium text-lg">
+                      {alarm.userName}
+                    </Body>
                   </div>
-                  <span
-                    className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(alarm.status)}`}
-                  >
-                    {alarm.status}
-                  </span>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      disabled={
+                        alarm.status === "closed" ||
+                        alarm.status === "cancelled"
+                      }
+                      className={clsx(
+                        "px-2 flex items-center gap-1 py-1 rounded-sm text-sm font-semibold border",
+                        alarm.status === "closed" ||
+                          alarm.status === "cancelled"
+                          ? "cursor-not-allowed opacity-50"
+                          : "cursor-pointer",
+                        getStatusColor(alarm.status),
+                      )}
+                    >
+                      {alarm.status.charAt(0).toUpperCase() +
+                        alarm.status.slice(1)}
+                      {!(
+                        alarm.status === "closed" ||
+                        alarm.status === "cancelled"
+                      ) && <ChevronDown />}
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      <DropdownMenuRadioGroup
+                        value={alarm.status}
+                        onValueChange={(newStatus) =>
+                          handleStatusChange(newStatus as AlarmStatus)
+                        }
+                      >
+                        <DropdownMenuRadioItem value="pending">
+                          Pending
+                        </DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="open">
+                          Open
+                        </DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="closed">
+                          Closed
+                        </DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="cancelled">
+                          Cancelled
+                        </DropdownMenuRadioItem>
+                      </DropdownMenuRadioGroup>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
 
                 <div>
@@ -181,30 +218,52 @@ export function AlarmDetail() {
                   <Body size="sm" className="text-muted-foreground mb-2">
                     {t("alarmDetail.assignedGuard", "Assigned Guard")}
                   </Body>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" className="w-full justify-start">
-                        {alarm.guard
-                          ? alarm.guard.name
-                          : t("alarmDetail.selectGuard", "Select Guard")}
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-full">
-                      <DropdownMenuRadioGroup
-                        value={alarm.guardId || ""}
-                        onValueChange={handleGuardAssign}
-                      >
-                        {guards?.map((guard) => (
-                          <DropdownMenuRadioItem
-                            key={guard.id}
-                            value={guard.id}
-                          >
-                            {guard.name}
-                          </DropdownMenuRadioItem>
-                        ))}
-                      </DropdownMenuRadioGroup>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1">
+                      <FormSelect
+                        value={
+                          alarm.guardId && guards
+                            ? guards
+                                .filter((g) => g.id === alarm.guardId)
+                                .map((g) => ({
+                                  value: g.id,
+                                  label: g.name,
+                                }))[0] || null
+                            : null
+                        }
+                        onChange={(option) => {
+                          if (option && "value" in option) {
+                            setIsUpdatingGuard(true);
+                            updateAlarm({ id: id!, guardId: option.value });
+                          } else if (option === null) {
+                            setIsUpdatingGuard(true);
+                            updateAlarm({ id: id!, guardId: null as any });
+                          }
+                        }}
+                        options={
+                          guards?.map((guard) => ({
+                            value: guard.id,
+                            label: guard.name,
+                          })) || []
+                        }
+                        placeholder={
+                          <div className="flex items-center gap-2">
+                            <UserPlus className="h-4 w-4" />
+                            {t("alarms.assignGuard", "Assign Guard")}
+                          </div>
+                        }
+                        isDisabled={
+                          isUpdatingGuard ||
+                          alarm.status === "closed" ||
+                          alarm.status === "cancelled"
+                        }
+                        isClearable
+                      />
+                    </div>
+                    {isUpdatingGuard && (
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground shrink-0" />
+                    )}
+                  </div>
                 </div>
 
                 {alarm.status !== "closed" && alarm.status !== "cancelled" && (
@@ -224,7 +283,9 @@ export function AlarmDetail() {
                         </Button>
                       )}
                       <Button
-                        onClick={() => handleStatusChange("closed" as AlarmStatus)}
+                        onClick={() =>
+                          handleStatusChange("closed" as AlarmStatus)
+                        }
                       >
                         {t("alarms.close", "Close")}
                       </Button>
@@ -283,19 +344,7 @@ export function AlarmDetail() {
               {t("alarmDetail.map", "Map")}
             </Heading>
             <div className="h-96 rounded-lg overflow-hidden">
-              <MapContainer center={center} zoom={15} className="h-full w-full">
-                <TileLayer
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
-                <Marker position={center} />
-                {locationTrail.length > 1 && (
-                  <Polyline
-                    positions={locationTrail}
-                    pathOptions={{ color: "blue", weight: 3 }}
-                  />
-                )}
-              </MapContainer>
+              <AlarmMap alarms={[alarm]} focusedAlarmId={alarm.id} />
             </div>
           </div>
         </div>

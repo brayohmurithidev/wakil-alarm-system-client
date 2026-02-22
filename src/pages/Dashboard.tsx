@@ -62,7 +62,7 @@ export function Dashboard() {
           </div>
           <div className="flex-1 rounded-lg shadow-md p-6 flex flex-col">
             <Heading size="xl" className="mb-4">
-              {t("alarms.title")}
+              {t("alarms.active")}
             </Heading>
 
             <div className="flex-1 overflow-y-auto">

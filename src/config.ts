@@ -26,5 +26,5 @@ const { apiUrl } = configs[environment];
 
 const apiKey = import.meta.env.VITE_API_KEY || "";
 
-export { apiUrl, apiKey, environment };
+export { apiKey, apiUrl, environment };
 export type { Environment };

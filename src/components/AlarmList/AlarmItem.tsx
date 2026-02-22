@@ -1,3 +1,4 @@
+import { ChevronDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import type { Alarm, AlarmStatus } from "@/api/types";
@@ -9,7 +10,6 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/DropdownMenu";
-import { ChevronDown } from "lucide-react";
 
 type AlarmItemProps = {
   alarm: Alarm;

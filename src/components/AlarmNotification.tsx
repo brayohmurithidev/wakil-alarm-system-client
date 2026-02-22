@@ -1,10 +1,11 @@
+import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+
 import { useUpdateAlarm } from "@/api/hooks/useUpdateAlarm";
 import type { Alarm } from "@/api/types";
 import { notify } from "@/components/Alert/notify";
 import { Body, Button, Heading } from "@/components/ui";
 import { Dialog, DialogContent } from "@/components/ui/Dialog";
-import { useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
 
 type AlarmNotificationProps = {
   alarms: Alarm[];
@@ -17,7 +18,7 @@ export function AlarmNotification({
 }: AlarmNotificationProps) {
   const { t } = useTranslation();
   const [acknowledgingIds, setAcknowledgingIds] = useState<Set<string>>(
-    new Set()
+    new Set(),
   );
 
   useEffect(() => {
@@ -77,8 +78,8 @@ export function AlarmNotification({
     <Dialog open={hasAlarms}>
       <DialogContent
         showCloseButton={false}
-        className={`p-0 gap-0 overflow-hidden ${
-          alarmCount === 1 ? "max-w-md" : "max-w-4xl"
+        className={`p-0 gap-0 !w-full overflow-hidden ${
+          alarmCount === 1 ? "!max-w-xl" : "!max-w-6xl"
         }`}
         onInteractOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
@@ -86,35 +87,35 @@ export function AlarmNotification({
         {hasAlarms && (
           <>
             {/* Header */}
-            <div className="bg-red-600 text-white p-6">
-              <div className="flex items-center justify-center gap-3 mb-2">
-                <span className="text-4xl animate-pulse">🚨</span>
-                <Heading size="xl" className="text-white">
+            <div className="bg-red-600 text-white p-8">
+              <div className="flex items-center justify-center gap-4 mb-3">
+                <span className="text-5xl animate-pulse">🚨</span>
+                <Heading size="xxl" className="text-white">
                   {alarmCount === 1
                     ? t("alarmNotification.title", "Alarm Alert")
                     : t(
                         "alarmNotification.multipleTitle",
-                        `${alarmCount} Active Alarms`
+                        `${alarmCount} Active Alarms`,
                       )}
                 </Heading>
-                <span className="text-4xl animate-pulse">🚨</span>
+                <span className="text-5xl animate-pulse">🚨</span>
               </div>
-              <Body className="text-white/90 text-center">
+              <Body className="text-white/90 text-center text-lg">
                 {alarmCount === 1
                   ? t("alarmNotification.subtitle", "Immediate action required")
                   : t(
                       "alarmNotification.multipleSubtitle",
-                      "Multiple emergencies require attention"
+                      "Multiple emergencies require attention",
                     )}
               </Body>
             </div>
 
             {/* Alarms Grid */}
             <div
-              className={`p-6 ${
+              className={`p-8 ${
                 alarmCount === 1
                   ? ""
-                  : "max-h-[70vh] overflow-y-auto grid gap-4 md:grid-cols-2"
+                  : "max-h-[80vh] overflow-y-auto grid gap-6 md:grid-cols-2"
               }`}
             >
               {alarms.map((alarm) => (

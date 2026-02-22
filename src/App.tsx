@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { BrowserRouter } from "react-router-dom";
 
 import { AlarmNotification } from "@/components/AlarmNotification";
@@ -7,7 +8,7 @@ import {
   useAlarmNotification,
 } from "@/contexts/AlarmNotificationContext";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { Fragment } from "react";
+
 import AppRoutes from "./routes";
 
 function AppContent() {

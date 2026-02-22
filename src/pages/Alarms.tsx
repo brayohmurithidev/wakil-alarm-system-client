@@ -1,6 +1,8 @@
+import clsx from "clsx";
+import { ChevronDown, Loader2, UserPlus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 import { useGetAlarms } from "@/api/hooks/useGetAlarms";
 import { useGetGuards } from "@/api/hooks/useGetGuards";
@@ -18,10 +20,16 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/DropdownMenu";
-import { ChevronDown, Loader2, UserPlus } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/Tooltip";
 
 export function Alarms() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const {
     data: alarms,
     isLoading: isGetAlarmsLoading,
@@ -102,13 +110,15 @@ export function Alarms() {
               </thead>
               <tbody className="divide-y divide-border">
                 {alarms.map((alarm) => (
-                  <tr key={alarm.id} className="hover:bg-muted/50">
+                  <tr
+                    key={alarm.id}
+                    className="hover:bg-muted/50 cursor-pointer"
+                    onClick={() => navigate(`/alarms/${alarm.id}`)}
+                  >
                     <td className="px-6 py-4">
-                      <Link to={`/alarms/${alarm.id}`}>
-                        <Body className="font-medium text-foreground hover:underline cursor-pointer">
-                          {alarm.userName}
-                        </Body>
-                      </Link>
+                      <Body className="font-medium text-foreground">
+                        {alarm.userName}
+                      </Body>
                     </td>
                     <td className="px-6 py-4">
                       <Body>{alarm.userPhone}</Body>
@@ -122,15 +132,47 @@ export function Alarms() {
                     <td className="px-6 py-4">
                       <Body size="sm">{formatDate(alarm.createdAt)}</Body>
                     </td>
-                    <td className="px-6 py-4">
+                    <td
+                      className="px-6 py-4"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <DropdownMenu>
-                        <DropdownMenuTrigger
-                          className={`px-2 flex items-center gap-1 py-1 rounded-sm text-sm font-semibold border cursor-pointer ${getStatusColor(alarm.status)}`}
-                        >
-                          {alarm.status.charAt(0).toUpperCase() +
-                            alarm.status.slice(1)}
-                          <ChevronDown />
-                        </DropdownMenuTrigger>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <DropdownMenuTrigger
+                                disabled={
+                                  alarm.status === "closed" ||
+                                  alarm.status === "cancelled"
+                                }
+                                className={clsx(
+                                  "px-2 flex items-center gap-1 py-1 rounded-sm text-sm font-semibold border",
+                                  alarm.status === "closed" ||
+                                    alarm.status === "cancelled"
+                                    ? "cursor-not-allowed opacity-50"
+                                    : "cursor-pointer",
+                                  getStatusColor(alarm.status),
+                                )}
+                              >
+                                {alarm.status.charAt(0).toUpperCase() +
+                                  alarm.status.slice(1)}
+                                {!(
+                                  alarm.status === "closed" ||
+                                  alarm.status === "cancelled"
+                                ) && <ChevronDown />}
+                              </DropdownMenuTrigger>
+                            </TooltipTrigger>
+                            {(alarm.status === "closed" ||
+                              alarm.status === "cancelled") && (
+                              <TooltipContent>
+                                <p>
+                                  Cannot change status for closed or cancelled
+                                  alarms
+                                </p>
+                              </TooltipContent>
+                            )}
+                          </Tooltip>
+                        </TooltipProvider>
                         <DropdownMenuContent>
                           <DropdownMenuRadioGroup
                             value={alarm.status}
@@ -154,7 +196,10 @@ export function Alarms() {
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </td>
-                    <td className="px-6 py-4">
+                    <td
+                      className="px-6 py-4"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <div className="flex items-center gap-2">
                         <div className="flex-1">
                           <FormSelect
@@ -172,9 +217,11 @@ export function Alarms() {
                               if (option && "value" in option) {
                                 handleGuardAssign(alarm.id, option.value);
                               } else if (option === null) {
-                                // Handle clear - remove guard assignment
                                 setUpdatingAlarmId(alarm.id);
-                                updateAlarm({ id: alarm.id, guardId: null as any });
+                                updateAlarm({
+                                  id: alarm.id,
+                                  guardId: null as any,
+                                });
                               }
                             }}
                             options={

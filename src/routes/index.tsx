@@ -1,9 +1,13 @@
+import { Navigate, Route, Routes } from "react-router-dom";
+
 import { AlarmDetail } from "@/pages/AlarmDetail";
 import { Alarms } from "@/pages/Alarms";
 import { Dashboard } from "@/pages/Dashboard";
 import { Guards } from "@/pages/Guards";
 import { Login } from "@/pages/Login";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Profile } from "@/pages/Profile";
+import { Users } from "@/pages/Users";
+
 import ProtectedRoutes from "./ProtectedRoutes";
 
 const AppRoutes = () => {
@@ -39,6 +43,22 @@ const AppRoutes = () => {
         element={
           <ProtectedRoutes>
             <Guards />
+          </ProtectedRoutes>
+        }
+      />
+      <Route
+        path="/users"
+        element={
+          <ProtectedRoutes>
+            <Users />
+          </ProtectedRoutes>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoutes>
+            <Profile />
           </ProtectedRoutes>
         }
       />

@@ -1,10 +1,11 @@
-import { ShieldUser } from "lucide-react";
+import { ShieldUser, User, Users } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "react-router-dom";
 
 import wakilGoldLogo from "@/assets/wakil-gold.png";
 import { Body, Button } from "@/components/ui";
 import { useAuth } from "@/contexts/AuthContext";
+
 import { AlarmIcon } from "./icons/AlarmIcon";
 import { DashboardIcon } from "./icons/DashboardIcon";
 
@@ -29,7 +30,23 @@ export function Sidebar() {
       path: "/guards",
       icon: <ShieldUser />,
     },
+    {
+      label: t("sidebar.users", "Users"),
+      path: "/users",
+      icon: <Users />,
+      requiredRole: "ADMIN" as const,
+    },
+    {
+      label: t("sidebar.profile", "Profile"),
+      path: "/profile",
+      icon: <User />,
+    },
   ];
+
+  const filteredNavItems = navItems.filter((item) => {
+    if (!item.requiredRole) return true;
+    return adminUser?.role === item.requiredRole;
+  });
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -40,7 +57,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 p-4 space-y-2">
-        {navItems.map((item) => (
+        {filteredNavItems.map((item) => (
           <Link
             key={item.path}
             to={item.path}

@@ -1,5 +1,18 @@
 export type AlarmStatus = "unknown" | "pending" | "open" | "closed" | "cancelled";
 
+export type AdminRole = "DISPATCHER" | "SUPERVISOR" | "ADMIN";
+
+export type AdminUser = {
+  id: string;
+  email: string;
+  name: string;
+  phone: string;
+  role: AdminRole;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type AlarmLocation = {
   id: string;
   latitude: number;

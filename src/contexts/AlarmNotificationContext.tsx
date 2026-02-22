@@ -3,6 +3,7 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { io, Socket } from "socket.io-client";
 
 import { getAlarms } from "@/api/hooks/useGetAlarms";
+import { queryKeys } from "@/api/queryKeys";
 import type { Alarm } from "@/api/types";
 import { apiUrl } from "@/config";
 
@@ -29,7 +30,7 @@ export const AlarmNotificationProvider: React.FC<{
       try {
         const alarms = await getAlarms();
         const pendingAlarms = alarms.filter(
-          (alarm) => alarm.status === "pending"
+          (alarm) => alarm.status === "pending",
         );
         setNotificationQueue(pendingAlarms);
         console.log(`Loaded ${pendingAlarms.length} pending alarms`);
@@ -62,25 +63,40 @@ export const AlarmNotificationProvider: React.FC<{
         return [...prev, newAlarm];
       });
       // Invalidate alarms query to refresh data
-      queryClient.invalidateQueries({ queryKey: ["alarms"] });
+      queryClient.invalidateQueries({ queryKey: [queryKeys.alarms] });
+      if (newAlarm.id) {
+        queryClient.invalidateQueries({
+          queryKey: [queryKeys.alarm, newAlarm.id],
+        });
+      }
     });
 
     socket.on("alarm:location-updated", (update) => {
       console.log("Location updated!", update);
-      // Invalidate alarms query to refresh data
-      queryClient.invalidateQueries({ queryKey: ["alarms"] });
+      // Invalidate alarms list and the specific alarm query
+      queryClient.invalidateQueries({ queryKey: [queryKeys.alarms] });
+      if (update.alarmId) {
+        queryClient.invalidateQueries({
+          queryKey: [queryKeys.alarm, update.alarmId],
+        });
+      }
     });
 
-    socket.on("alarm:updated", (updatedAlarm: Alarm) => {
+    socket.on("alarm:updated", (updatedAlarm: any) => {
       console.log("Alarm updated!", updatedAlarm);
       // Remove from queue if no longer pending
       if (updatedAlarm.status !== "pending") {
         setNotificationQueue((prev) =>
-          prev.filter((alarm) => alarm.id !== updatedAlarm.id)
+          prev.filter((alarm) => alarm.id !== updatedAlarm.id),
         );
       }
-      // Invalidate alarms query to refresh data
-      queryClient.invalidateQueries({ queryKey: ["alarms"] });
+      // Invalidate alarms list and the specific alarm query
+      queryClient.invalidateQueries({ queryKey: [queryKeys.alarms] });
+      if (updatedAlarm.id) {
+        queryClient.invalidateQueries({
+          queryKey: [queryKeys.alarm, updatedAlarm.id],
+        });
+      }
     });
 
     return () => {
@@ -96,7 +112,7 @@ export const AlarmNotificationProvider: React.FC<{
 
   const removeFromQueue = (alarmId: string) => {
     setNotificationQueue((prev) =>
-      prev.filter((alarm) => alarm.id !== alarmId)
+      prev.filter((alarm) => alarm.id !== alarmId),
     );
   };
 
@@ -118,7 +134,7 @@ export const useAlarmNotification = () => {
   const context = useContext(AlarmNotificationContext);
   if (!context) {
     throw new Error(
-      "useAlarmNotification must be used within AlarmNotificationProvider"
+      "useAlarmNotification must be used within AlarmNotificationProvider",
     );
   }
   return context;

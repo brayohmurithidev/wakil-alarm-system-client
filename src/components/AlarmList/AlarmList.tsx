@@ -1,4 +1,5 @@
 import type { Alarm, AlarmStatus } from "@/api/types";
+
 import { AlarmItem } from "./AlarmItem";
 
 type AlarmListProps = {

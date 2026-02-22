@@ -12,24 +12,38 @@ type FormLabelProps = React.HTMLProps<HTMLLabelElement> & {
 const formSelectStyles = {
   control: (provided: any, state: any) => ({
     ...provided,
+    backgroundColor: "#1f2937",
     paddingTop: 0,
     paddingBottom: 0,
     borderRadius: 4,
-    borderColor: state.isFocused ? "#B1A2EF" : "#EDEBF5",
+    borderColor: state.isFocused ? "#ffffff" : "#ffffff",
     boxShadow: "none",
     cursor: "pointer",
     ":hover": {
-      borderColor: state.isFocused ? "#B1A2EF" : "#EDEBF5",
+      borderColor: state.isFocused ? "#D1CCE6" : "#D1CCE6",
     },
     fontSize: 12,
+  }),
+  menu: (provided: any) => ({
+    ...provided,
+    backgroundColor: "#1f2937",
+    border: "1px solid #374151",
+  }),
+  menuList: (provided: any) => ({
+    ...provided,
+    backgroundColor: "#1f2937",
+    padding: 0,
   }),
   singleValue: (provided: any) => ({
     ...provided,
     fontSize: 14,
+    color: "#ffffff",
+    fontWeight: 500,
   }),
   input: (provided: any) => ({
     ...provided,
     fontSize: 14,
+    color: "#ffffff",
   }),
   valueContainer: (provided: any) => ({
     ...provided,
@@ -38,22 +52,25 @@ const formSelectStyles = {
   placeholder: (provided: any) => ({
     ...provided,
     fontSize: 14,
-    color: "#AAAAAA",
+    color: "#ffffff",
   }),
   option: (provided: any, state: any) => ({
     ...provided,
     fontSize: 14,
     backgroundColor: state.isSelected
-      ? "#7A69C0"
+      ? "#111827"
       : state.isFocused
-        ? "#F3F0FF"
-        : "white",
-    color: state.isSelected ? "white" : "#2D2D2D",
+        ? "#1f2937"
+        : "#1f2937",
+    color: state.isSelected ? "#ffffff" : "#ffffff",
+    fontWeight: state.isSelected ? 600 : 400,
     cursor: "pointer",
     ":hover": state.isSelected
-      ? {}
+      ? {
+          backgroundColor: "#111827",
+        }
       : {
-          backgroundColor: "#F3F0FF",
+          backgroundColor: "#111827",
         },
   }),
 };
@@ -64,9 +81,9 @@ export const FormLabel: React.FC<FormLabelProps> = ({
   className,
   ...props
 }) => (
-  <label className={clsx("", className)} {...props}>
+  <label className={clsx("text-gray-300 pb-4", className)} {...props}>
     {children}
-    {isOptional && <span className="ml-2 text-gray-500">(Optional)</span>}
+    {isOptional && <span className="ml-2 text-gray-300">(Optional)</span>}
   </label>
 );
 export const FormInput = forwardRef<
@@ -84,7 +101,7 @@ export const FormInput = forwardRef<
         <div
           className={clsx(
             "pointer-events-none",
-            "absolute left-3 top-1/2 -translate-y-1/2 text-dental-neutral-N6",
+            "absolute left-3 top-1/2 -translate-y-1/2 text-white",
             "group-focus-within:text-dental-primary-P3 group-hover:text-dental-primary-P3",
           )}
         >
@@ -95,8 +112,8 @@ export const FormInput = forwardRef<
       <input
         ref={ref}
         className={clsx(
-          "w-full rounded-lg border-[1px] border-dental-primary-P5 bg-dental-neutral-N10 p-4 text-sm text-dental-neutral-N1 placeholder:text-dental-neutral-N6",
-          "focus:border-dental-primary-P3 focus:outline-none",
+          "w-full rounded-lg border-[1px] border-gray-600 bg-card p-4 text-sm text-white placeholder:text-gray-500",
+          "focus:border-gray-400 focus:outline-none",
           hasIcon && "pl-10",
           className,
         )}
