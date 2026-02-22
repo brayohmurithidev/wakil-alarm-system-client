@@ -1,6 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 
+import type { AdminUser } from "@/api/types";
 import { useAuth } from "@/contexts/AuthContext";
 import axiosInstance from "@/lib/axios";
 
@@ -12,12 +13,7 @@ type LoginParams = {
 type LoginResponse = {
   message: string;
   token: string;
-  adminUser: {
-    id: string;
-    email: string;
-    name: string;
-    phone: string;
-  };
+  adminUser: AdminUser;
 };
 
 const loginFn = async (params: LoginParams): Promise<LoginResponse> => {
