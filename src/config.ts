@@ -1,4 +1,4 @@
-type Environment = "local" | "staging" | "production";
+type Environment = "local" | "production";
 
 type Config = {
   environment: Environment;
@@ -10,18 +10,14 @@ const configs: Record<Environment, Config> = {
     environment: "local",
     apiUrl: "http://localhost:3000",
   },
-  staging: {
-    environment: "staging",
-    apiUrl: "https://api-staging.wakilsecurity.com",
-  },
   production: {
     environment: "production",
-    apiUrl: "not yet ready",
+    apiUrl: "https://api.wakilsecurity.com",
   },
 };
 
 const environment =
-  (import.meta.env.VITE_ENVIRONMENT as Environment) ?? "staging";
+  (import.meta.env.VITE_ENVIRONMENT as Environment) ?? "production";
 const { apiUrl } = configs[environment];
 
 const apiKey = import.meta.env.VITE_API_KEY || "";
