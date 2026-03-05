@@ -55,13 +55,19 @@ export const AlarmNotificationProvider: React.FC<{
 
     socket.on("alarm:created", (newAlarm: Alarm) => {
       console.log("New alarm received!", newAlarm);
-      setNotificationQueue((prev) => {
-        // Avoid duplicates
-        if (prev.some((alarm) => alarm.id === newAlarm.id)) {
-          return prev;
-        }
-        return [...prev, newAlarm];
-      });
+
+      // Only add to notification queue if status is "pending"
+      // "initiating" status means user is still holding the button
+      if (newAlarm.status === "pending") {
+        setNotificationQueue((prev) => {
+          // Avoid duplicates
+          if (prev.some((alarm) => alarm.id === newAlarm.id)) {
+            return prev;
+          }
+          return [...prev, newAlarm];
+        });
+      }
+
       // Invalidate alarms query to refresh data
       queryClient.invalidateQueries({ queryKey: [queryKeys.alarms] });
       if (newAlarm.id) {
@@ -82,14 +88,27 @@ export const AlarmNotificationProvider: React.FC<{
       }
     });
 
-    socket.on("alarm:updated", (updatedAlarm: any) => {
+    socket.on("alarm:updated", (updatedAlarm: Alarm) => {
       console.log("Alarm updated!", updatedAlarm);
-      // Remove from queue if no longer pending
-      if (updatedAlarm.status !== "pending") {
-        setNotificationQueue((prev) =>
-          prev.filter((alarm) => alarm.id !== updatedAlarm.id),
-        );
-      }
+
+      setNotificationQueue((prev) => {
+        // Remove from queue if no longer pending
+        if (updatedAlarm.status !== "pending") {
+          return prev.filter((alarm) => alarm.id !== updatedAlarm.id);
+        }
+
+        // Add to queue if status changed to "pending" (e.g., from "initiating")
+        if (updatedAlarm.status === "pending") {
+          // Avoid duplicates
+          if (prev.some((alarm) => alarm.id === updatedAlarm.id)) {
+            return prev;
+          }
+          return [...prev, updatedAlarm];
+        }
+
+        return prev;
+      });
+
       // Invalidate alarms list and the specific alarm query
       queryClient.invalidateQueries({ queryKey: [queryKeys.alarms] });
       if (updatedAlarm.id) {

@@ -2,12 +2,14 @@ import { Fragment } from "react";
 import { BrowserRouter } from "react-router-dom";
 
 import { AlarmNotification } from "@/components/AlarmNotification";
+import { InitiatingAlarmsContainer } from "@/components/InitiatingAlarmsContainer";
 import { NotificationsContainer } from "@/components/Alert/NotificationsContainer";
 import {
   AlarmNotificationProvider,
   useAlarmNotification,
 } from "@/contexts/AlarmNotificationContext";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { InitiatingAlarmProvider } from "@/contexts/InitiatingAlarmContext";
 
 import AppRoutes from "./routes";
 
@@ -20,6 +22,7 @@ function AppContent() {
         alarms={notificationQueue}
         onRemoveAlarm={removeFromQueue}
       />
+      <InitiatingAlarmsContainer />
       <AppRoutes />
       <NotificationsContainer />
     </Fragment>
@@ -31,7 +34,9 @@ function App() {
     <BrowserRouter>
       <AuthProvider>
         <AlarmNotificationProvider>
-          <AppContent />
+          <InitiatingAlarmProvider>
+            <AppContent />
+          </InitiatingAlarmProvider>
         </AlarmNotificationProvider>
       </AuthProvider>
     </BrowserRouter>

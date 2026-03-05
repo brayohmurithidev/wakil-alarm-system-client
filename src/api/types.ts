@@ -1,4 +1,4 @@
-export type AlarmStatus = "unknown" | "pending" | "open" | "closed" | "cancelled";
+export type AlarmStatus = "unknown" | "initiating" | "pending" | "open" | "closed" | "cancelled";
 
 export type AdminRole = "DISPATCHER" | "SUPERVISOR" | "ADMIN";
 
