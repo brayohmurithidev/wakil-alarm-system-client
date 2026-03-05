@@ -12,7 +12,7 @@ const configs: Record<Environment, Config> = {
   },
   production: {
     environment: "production",
-    apiUrl: "https://api.wakilsecurity.com",
+    apiUrl: "https://api-production.wakilsecurity.com",
   },
 };
 
