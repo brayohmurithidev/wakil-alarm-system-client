@@ -67,7 +67,7 @@ export function AlarmNotification({
     setAcknowledgingIds((prev) => new Set(prev).add(alarmId));
     updateAlarm({
       id: alarmId,
-      status: "open",
+      status: "acknowledged",
     });
   };
 

@@ -24,22 +24,33 @@ export const AlarmNotificationProvider: React.FC<{
   const queryClient = useQueryClient();
   const [notificationQueue, setNotificationQueue] = useState<Alarm[]>([]);
 
-  // Fetch pending alarms on mount
+  // Debug: Log queue changes
   useEffect(() => {
-    const fetchPendingAlarms = async () => {
+    console.log("🔔 Notification queue changed:", {
+      count: notificationQueue.length,
+      alarms: notificationQueue.map((a) => ({
+        id: a.id,
+        status: a.status,
+        user: a.userName,
+      })),
+    });
+  }, [notificationQueue]);
+
+  useEffect(() => {
+    console.log("🚀 AlarmNotificationProvider mounted, fetching open alarms...");
+    const fetchOpenAlarms = async () => {
       try {
         const alarms = await getAlarms();
-        const pendingAlarms = alarms.filter(
-          (alarm) => alarm.status === "pending",
-        );
-        setNotificationQueue(pendingAlarms);
-        console.log(`Loaded ${pendingAlarms.length} pending alarms`);
+        console.log(`📋 Fetched ${alarms.length} total alarms`);
+        const openAlarms = alarms.filter((alarm) => alarm.status === "open");
+        setNotificationQueue(openAlarms);
+        console.log(`✅ Loaded ${openAlarms.length} open alarms`);
       } catch (error) {
-        console.error("Failed to fetch pending alarms:", error);
+        console.error("❌ Failed to fetch open alarms:", error);
       }
     };
 
-    fetchPendingAlarms();
+    fetchOpenAlarms();
   }, []);
 
   useEffect(() => {
@@ -54,21 +65,26 @@ export const AlarmNotificationProvider: React.FC<{
     });
 
     socket.on("alarm:created", (newAlarm: Alarm) => {
-      console.log("New alarm received!", newAlarm);
+      console.log("📥 New alarm received!", {
+        id: newAlarm.id,
+        status: newAlarm.status,
+        user: newAlarm.userName,
+      });
 
-      // Only add to notification queue if status is "pending"
-      // "initiating" status means user is still holding the button
-      if (newAlarm.status === "pending") {
+      if (newAlarm.status === "open") {
+        console.log("✅ Adding to notification queue (status: open)");
         setNotificationQueue((prev) => {
-          // Avoid duplicates
           if (prev.some((alarm) => alarm.id === newAlarm.id)) {
             return prev;
           }
           return [...prev, newAlarm];
         });
+      } else {
+        console.log(
+          `⏭️  Skipping notification (status: ${newAlarm.status}, expected: open)`,
+        );
       }
 
-      // Invalidate alarms query to refresh data
       queryClient.invalidateQueries({ queryKey: [queryKeys.alarms] });
       if (newAlarm.id) {
         queryClient.invalidateQueries({
@@ -79,7 +95,6 @@ export const AlarmNotificationProvider: React.FC<{
 
     socket.on("alarm:location-updated", (update) => {
       console.log("Location updated!", update);
-      // Invalidate alarms list and the specific alarm query
       queryClient.invalidateQueries({ queryKey: [queryKeys.alarms] });
       if (update.alarmId) {
         queryClient.invalidateQueries({
@@ -92,14 +107,16 @@ export const AlarmNotificationProvider: React.FC<{
       console.log("Alarm updated!", updatedAlarm);
 
       setNotificationQueue((prev) => {
-        // Remove from queue if no longer pending
-        if (updatedAlarm.status !== "pending") {
+        if (
+          updatedAlarm.status === "acknowledged" ||
+          updatedAlarm.status === "closed" ||
+          updatedAlarm.status === "cancelled" ||
+          updatedAlarm.status === "pending"
+        ) {
           return prev.filter((alarm) => alarm.id !== updatedAlarm.id);
         }
 
-        // Add to queue if status changed to "pending" (e.g., from "initiating")
-        if (updatedAlarm.status === "pending") {
-          // Avoid duplicates
+        if (updatedAlarm.status === "open") {
           if (prev.some((alarm) => alarm.id === updatedAlarm.id)) {
             return prev;
           }
@@ -109,7 +126,6 @@ export const AlarmNotificationProvider: React.FC<{
         return prev;
       });
 
-      // Invalidate alarms list and the specific alarm query
       queryClient.invalidateQueries({ queryKey: [queryKeys.alarms] });
       if (updatedAlarm.id) {
         queryClient.invalidateQueries({

@@ -10,6 +10,7 @@ export type UpdateAlarmParams = {
   id: string;
   status?: AlarmStatus;
   guardId?: string;
+  guardArrivedAt?: string;
 };
 
 export type UpdateAlarmResponse = {
@@ -26,12 +27,14 @@ const updateAlarm = async ({
   id,
   status,
   guardId,
+  guardArrivedAt,
 }: UpdateAlarmParams): Promise<UpdateAlarmResponse> => {
   const response = await axiosInstance.patch<UpdateAlarmResponse>(
     `/api/alarms/${id}`,
     {
       ...(status !== undefined && { status }),
       ...(guardId !== undefined && { guardId }),
+      ...(guardArrivedAt !== undefined && { guardArrivedAt }),
     }
   );
   return response.data;

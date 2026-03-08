@@ -4,6 +4,7 @@ import { AlarmDetail } from "@/pages/AlarmDetail";
 import { Alarms } from "@/pages/Alarms";
 import { Dashboard } from "@/pages/Dashboard";
 import { Guards } from "@/pages/Guards";
+import { History } from "@/pages/History";
 import { Login } from "@/pages/Login";
 import { Profile } from "@/pages/Profile";
 import { Users } from "@/pages/Users";
@@ -35,6 +36,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoutes>
             <AlarmDetail />
+          </ProtectedRoutes>
+        }
+      />
+      <Route
+        path="/history"
+        element={
+          <ProtectedRoutes>
+            <History />
           </ProtectedRoutes>
         }
       />

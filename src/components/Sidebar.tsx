@@ -1,4 +1,4 @@
-import { ShieldUser, User, Users } from "lucide-react";
+import { History, ShieldUser, User, Users } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "react-router-dom";
 
@@ -24,6 +24,11 @@ export function Sidebar() {
       label: t("sidebar.alarms", "Alarms"),
       path: "/alarms",
       icon: <AlarmIcon />,
+    },
+    {
+      label: t("sidebar.history", "History"),
+      path: "/history",
+      icon: <History />,
     },
     {
       label: t("sidebar.guards", "Guards"),

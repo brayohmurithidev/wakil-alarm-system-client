@@ -1,20 +1,30 @@
-import { Loader2, UserPlus } from "lucide-react";
-import { useState } from "react";
+import {
+  History as HistoryIcon,
+  Loader2,
+  Search,
+  UserPlus,
+} from "lucide-react";
+import { useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
 import { useGetAlarms } from "@/api/hooks/useGetAlarms";
 import { useGetGuards } from "@/api/hooks/useGetGuards";
 import { useUpdateAlarm } from "@/api/hooks/useUpdateAlarm";
+import type { AlarmStatus } from "@/api/types";
 import { notify } from "@/components/Alert/notify";
 import { AlarmStatusBadge } from "@/components/AlarmStatusBadge";
-import { FormSelect } from "@/components/FormGroup/FormGroup";
-import { AlarmIcon } from "@/components/icons/AlarmIcon";
+import { FormInput, FormSelect } from "@/components/FormGroup/FormGroup";
 import { Loading } from "@/components/Loading";
 import { PageHeader } from "@/components/PageHeader";
 import { Body } from "@/components/ui";
 
-export function Alarms() {
+type SearchFormData = {
+  search: string;
+};
+
+export function History() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const {
@@ -24,6 +34,14 @@ export function Alarms() {
   } = useGetAlarms();
   const { data: guards } = useGetGuards();
   const [updatingAlarmId, setUpdatingAlarmId] = useState<string | null>(null);
+
+  const { register, watch } = useForm<SearchFormData>({
+    defaultValues: {
+      search: "",
+    },
+  });
+
+  const searchQuery = watch("search");
 
   const { mutate: updateAlarm } = useUpdateAlarm({
     onSuccess: (response) => {
@@ -38,6 +56,11 @@ export function Alarms() {
     },
   });
 
+  const handleStatusChange = (alarmId: string, status: string) => {
+    setUpdatingAlarmId(alarmId);
+    updateAlarm({ id: alarmId, status: status as AlarmStatus });
+  };
+
   const handleGuardAssign = (alarmId: string, guardId: string) => {
     setUpdatingAlarmId(alarmId);
     updateAlarm({ id: alarmId, guardId });
@@ -47,13 +70,40 @@ export function Alarms() {
     return new Date(dateString).toLocaleString();
   };
 
+  const closedAlarms = useMemo(() => {
+    const closed = alarms?.filter((alarm) => alarm.status === "closed") || [];
+
+    if (!searchQuery.trim()) {
+      return closed;
+    }
+
+    const query = searchQuery.toLowerCase();
+    return closed.filter(
+      (alarm) =>
+        alarm.userName.toLowerCase().includes(query) ||
+        alarm.userPhone.toLowerCase().includes(query),
+    );
+  }, [alarms, searchQuery]);
+
   if (isGetAlarmsLoading) return <Loading />;
   if (iseGetAlarmsError) return null;
 
   return (
     <div className="min-w-7xl">
-      <PageHeader title={t("alarms.title")} icon={<AlarmIcon size={30} />} />
-      {alarms && alarms.length > 0 && (
+      <PageHeader
+        title={t("history.title", "History")}
+        icon={<HistoryIcon size={30} />}
+        actions={
+          <FormInput
+            type="text"
+            placeholder={t("history.search", "Search by name or phone...")}
+            icon={<Search className="h-5 w-5" />}
+            {...register("search")}
+          />
+        }
+      />
+
+      {closedAlarms && closedAlarms.length > 0 ? (
         <div className="bg-card rounded-lg shadow-md overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -83,7 +133,7 @@ export function Alarms() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {alarms.map((alarm) => (
+                {closedAlarms.map((alarm) => (
                   <tr
                     key={alarm.id}
                     className="hover:bg-muted/50 cursor-pointer"
@@ -168,6 +218,14 @@ export function Alarms() {
               </tbody>
             </table>
           </div>
+        </div>
+      ) : (
+        <div className="bg-card rounded-lg shadow-md p-8 text-center">
+          <Body className="text-muted-foreground">
+            {searchQuery.trim()
+              ? t("history.noResults", "No results found for your search")
+              : t("history.noClosedAlarms", "No closed alarms found")}
+          </Body>
         </div>
       )}
     </div>

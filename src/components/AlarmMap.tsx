@@ -7,7 +7,7 @@ import iconShadow from "leaflet/dist/images/marker-shadow.png";
 import { useEffect } from "react";
 import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
 
-import type { Alarm } from "@/api/types";
+import type { Alarm, AlarmStatus } from "@/api/types";
 
 const DefaultIcon = L.icon({
   iconUrl: icon,
@@ -17,6 +17,45 @@ const DefaultIcon = L.icon({
 });
 
 L.Marker.prototype.options.icon = DefaultIcon;
+
+const getMarkerIcon = (status: AlarmStatus) => {
+  const colors: Record<AlarmStatus, string> = {
+    pending: "#f97316",
+    open: "#3b82f6",
+    acknowledged: "#a855f7",
+    closed: "#6b7280",
+    cancelled: "#9ca3af",
+    unknown: "#9ca3af",
+  };
+
+  const color = colors[status] || colors.unknown;
+
+  return L.divIcon({
+    className: "custom-marker",
+    html: `
+      <div style="
+        position: relative;
+        width: 32px;
+        height: 32px;
+      ">
+        <svg
+          width="32"
+          height="32"
+          viewBox="0 0 24 24"
+          fill="${color}"
+          stroke="white"
+          stroke-width="1.5"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+        </svg>
+      </div>
+    `,
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -32],
+  });
+};
 
 type AlarmMapProps = {
   alarms: Alarm[];
@@ -48,10 +87,8 @@ function MapFocusHandler({
 }
 
 export function AlarmMap({ alarms, focusedAlarmId }: AlarmMapProps) {
-  // Default center (Nairobi, Kenya)
   const defaultCenter: [number, number] = [-1.2921, 36.8219];
 
-  // If we have alarms, center on the first one
   const center: [number, number] =
     alarms.length > 0
       ? [alarms[0].latitude, alarms[0].longitude]
@@ -69,7 +106,11 @@ export function AlarmMap({ alarms, focusedAlarmId }: AlarmMapProps) {
       />
       <MapFocusHandler alarms={alarms} focusedAlarmId={focusedAlarmId} />
       {alarms.map((alarm) => (
-        <Marker key={alarm.id} position={[alarm.latitude, alarm.longitude]}>
+        <Marker
+          key={alarm.id}
+          position={[alarm.latitude, alarm.longitude]}
+          icon={getMarkerIcon(alarm.status)}
+        >
           <Popup>
             <div className="p-2">
               <h3 className="font-bold text-lg">{alarm.userName}</h3>

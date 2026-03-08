@@ -2,11 +2,8 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useGetAlarms } from "@/api/hooks/useGetAlarms";
-import { useUpdateAlarm } from "@/api/hooks/useUpdateAlarm";
-import type { AlarmStatus } from "@/api/types";
 import { AlarmList } from "@/components/AlarmList";
 import { AlarmMap } from "@/components/AlarmMap";
-import { notify } from "@/components/Alert/notify";
 import { DashboardIcon } from "@/components/icons/DashboardIcon";
 import { Loading } from "@/components/Loading";
 import { PageHeader } from "@/components/PageHeader";
@@ -20,29 +17,13 @@ export function Dashboard() {
   const activeAlarms = useMemo(() => {
     return (
       alarms?.filter(
-        (alarm) => alarm.status === "open" || alarm.status === "pending",
+        (alarm) =>
+          alarm.status === "pending" ||
+          alarm.status === "open" ||
+          alarm.status === "acknowledged",
       ) || []
     );
   }, [alarms]);
-
-  const { mutate: updateAlarmMutation } = useUpdateAlarm({
-    onSuccess: (response) => {
-      notify(response.message, { type: "success" });
-    },
-    onError: (error: Error) => {
-      const errorMessage =
-        (error as any).response?.data?.message || error.message;
-      notify(errorMessage, { type: "error" });
-      console.error("Mutation error:", error);
-    },
-  });
-
-  const handleStatusChange = (alarmId: string, newStatus: AlarmStatus) => {
-    updateAlarmMutation({
-      id: alarmId,
-      status: newStatus,
-    });
-  };
 
   if (isLoading) return <Loading />;
   if (error) return null;
@@ -70,7 +51,6 @@ export function Dashboard() {
                 <AlarmList
                   alarms={activeAlarms}
                   onAlarmClick={setFocusedAlarmId}
-                  onStatusChange={handleStatusChange}
                 />
               ) : (
                 <Body className="text-muted-foreground">

@@ -81,7 +81,10 @@ export const FormLabel: React.FC<FormLabelProps> = ({
   className,
   ...props
 }) => (
-  <label className={clsx("text-gray-300 pb-4", className)} {...props}>
+  <label
+    className={clsx("block text-white text-sm font-semibold pb-4", className)}
+    {...props}
+  >
     {children}
     {isOptional && <span className="ml-2 text-gray-300">(Optional)</span>}
   </label>
@@ -112,7 +115,7 @@ export const FormInput = forwardRef<
       <input
         ref={ref}
         className={clsx(
-          "w-full rounded-lg border-[1px] border-gray-600 bg-card p-4 text-sm text-white placeholder:text-gray-500",
+          "w-full rounded-lg border border-gray-600 bg-card p-4 text-sm text-white placeholder:text-gray-500",
           "focus:border-gray-400 focus:outline-none",
           hasIcon && "pl-10",
           className,
@@ -130,7 +133,7 @@ export const FormTextarea = forwardRef<
   <textarea
     ref={ref}
     className={clsx(
-      "w-full rounded-lg border-[1px] border-dental-primary-P5 bg-dental-neutral-N10 p-4 text-dental-neutral-N1",
+      "w-full rounded-lg border border-white p-4 text-white placeholder:text-gray-400",
       className,
     )}
     {...props}

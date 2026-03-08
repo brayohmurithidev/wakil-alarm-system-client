@@ -1,27 +1,24 @@
-import clsx from "clsx";
-import { ChevronDown, Loader2, UserPlus } from "lucide-react";
+import { Edit2, Loader2, UserPlus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 
+import { useCreateAlarmReport } from "@/api/hooks/useCreateAlarmReport";
 import { useGetAlarm } from "@/api/hooks/useGetAlarm";
 import { useGetGuards } from "@/api/hooks/useGetGuards";
 import { useUpdateAlarm } from "@/api/hooks/useUpdateAlarm";
-import type { AlarmStatus } from "@/api/types";
 import { AlarmMap } from "@/components/AlarmMap";
+import { AlarmStatusBadge } from "@/components/AlarmStatusBadge";
 import { notify } from "@/components/Alert/notify";
+import {
+  CloseCaseDialog,
+  type CloseCaseData,
+} from "@/components/CloseCaseDialog";
 import { FormSelect } from "@/components/FormGroup/FormGroup";
 import { AlarmIcon } from "@/components/icons/AlarmIcon";
 import { Loading } from "@/components/Loading";
 import { PageHeader } from "@/components/PageHeader";
 import { Body, Button, Heading } from "@/components/ui";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/DropdownMenu";
 
 export function AlarmDetail() {
   const { t } = useTranslation();
@@ -30,12 +27,17 @@ export function AlarmDetail() {
   const { data: alarm, isLoading, error } = useGetAlarm(id || "");
   const { data: guards } = useGetGuards();
   const [isUpdatingGuard, setIsUpdatingGuard] = useState(false);
+  const [isCloseCaseDialogOpen, setIsCloseCaseDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<"create" | "view">("create");
+  const [isEditingArrivalTime, setIsEditingArrivalTime] = useState(false);
+  const [arrivalTimeValue, setArrivalTimeValue] = useState("");
   const { mutate: updateAlarm } = useUpdateAlarm({
     onSuccess: (response) => {
       setIsUpdatingGuard(false);
       notify(
-        response.message || t("alarmDetail.updateSuccess", "Alarm updated successfully"),
-        { type: "success" }
+        response.message ||
+          t("alarmDetail.updateSuccess", "Alarm updated successfully"),
+        { type: "success" },
       );
     },
     onError: (error: any) => {
@@ -44,34 +46,58 @@ export function AlarmDetail() {
         error?.response?.data?.message ||
           error?.response?.data?.error ||
           t("alarmDetail.updateError", "Failed to update alarm"),
-        { type: "error" }
+        { type: "error" },
       );
     },
   });
 
-  const handleStatusChange = (status: AlarmStatus) => {
-    if (id) {
-      updateAlarm({ id, status });
-    }
+  const { mutate: createAlarmReport, isPending: isCreatingReport } =
+    useCreateAlarmReport({
+      onSuccess: (response) => {
+        setIsCloseCaseDialogOpen(false);
+        notify(
+          response.message ||
+            "Alarm report created and case closed successfully",
+          { type: "success" },
+        );
+      },
+      onError: (error: any) => {
+        notify(
+          error?.response?.data?.message ||
+            error?.response?.data?.error ||
+            "Failed to create alarm report",
+          { type: "error" },
+        );
+      },
+    });
+
+  const handleCloseCaseSubmit = (data: CloseCaseData) => {
+    if (!id) return;
+
+    createAlarmReport({
+      alarmId: id,
+      callLog: data.callLog as
+        | "called_answered"
+        | "called_no_answer"
+        | "not_called",
+      communicationType: data.communicationType as
+        | "sms_sent"
+        | "whatsapp_sent"
+        | "no_sent",
+      communicationNotes: data.communicationNotes || undefined,
+      internalNotes: data.internalNotes || undefined,
+      outcome: data.outcome as
+        | "resolved_remotely"
+        | "physical_response"
+        | "false_alarm"
+        | "escalated",
+      whatHappened: data.whatHappened,
+      learningIdentified: data.learningIdentified,
+    });
   };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString();
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "pending":
-        return "bg-orange-100 text-orange-800 border-orange-300";
-      case "open":
-        return "bg-green-100 text-green-800 border-green-300";
-      case "closed":
-        return "bg-gray-100 text-gray-800 border-gray-300";
-      case "cancelled":
-        return "bg-red-100 text-red-800 border-red-300";
-      default:
-        return "bg-gray-100 text-gray-800 border-gray-300";
-    }
   };
 
   if (isLoading) {
@@ -82,7 +108,7 @@ export function AlarmDetail() {
           icon={<AlarmIcon size={30} />}
         />
         <div className="flex-1 flex items-center justify-center">
-          <Loading text={t("alarmDetail.loading", "Loading alarm...")} />
+          <Loading />
         </div>
       </div>
     );
@@ -143,50 +169,7 @@ export function AlarmDetail() {
                       {alarm.userName}
                     </Body>
                   </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      disabled={
-                        alarm.status === "closed" ||
-                        alarm.status === "cancelled"
-                      }
-                      className={clsx(
-                        "px-2 flex items-center gap-1 py-1 rounded-sm text-sm font-semibold border",
-                        alarm.status === "closed" ||
-                          alarm.status === "cancelled"
-                          ? "cursor-not-allowed opacity-50"
-                          : "cursor-pointer",
-                        getStatusColor(alarm.status),
-                      )}
-                    >
-                      {alarm.status.charAt(0).toUpperCase() +
-                        alarm.status.slice(1)}
-                      {!(
-                        alarm.status === "closed" ||
-                        alarm.status === "cancelled"
-                      ) && <ChevronDown />}
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      <DropdownMenuRadioGroup
-                        value={alarm.status}
-                        onValueChange={(newStatus) =>
-                          handleStatusChange(newStatus as AlarmStatus)
-                        }
-                      >
-                        <DropdownMenuRadioItem value="pending">
-                          Pending
-                        </DropdownMenuRadioItem>
-                        <DropdownMenuRadioItem value="open">
-                          Open
-                        </DropdownMenuRadioItem>
-                        <DropdownMenuRadioItem value="closed">
-                          Closed
-                        </DropdownMenuRadioItem>
-                        <DropdownMenuRadioItem value="cancelled">
-                          Cancelled
-                        </DropdownMenuRadioItem>
-                      </DropdownMenuRadioGroup>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <AlarmStatusBadge status={alarm.status} />
                 </div>
 
                 <div>
@@ -212,6 +195,181 @@ export function AlarmDetail() {
                   <Body className="font-medium">
                     {formatDate(alarm.createdAt)}
                   </Body>
+                </div>
+
+                <div>
+                  <Body size="sm" className="text-muted-foreground">
+                    {t("alarmDetail.acknowledgedBy", "Acknowledged By")}
+                  </Body>
+                  <Body className="font-medium">
+                    {alarm.acknowledgedBy
+                      ? alarm.acknowledgedBy.name
+                      : t(
+                          "alarmDetail.notYetAcknowledged",
+                          "Not yet acknowledged",
+                        )}
+                  </Body>
+                </div>
+
+                <div>
+                  {alarm.acknowledgedAt ? (
+                    <div>
+                      <Body size="sm" className="text-muted-foreground mb-2">
+                        {t("alarmDetail.acknowledgedAt", "Acknowledged At")}
+                      </Body>
+                      <Body className="font-medium">
+                        {formatDate(alarm.acknowledgedAt)}
+                      </Body>
+                    </div>
+                  ) : (
+                    <Button
+                      className="w-full bg-purple-600 hover:bg-purple-700"
+                      size="lg"
+                      onClick={() => {
+                        if (id) {
+                          updateAlarm({
+                            id,
+                            status: "acknowledged",
+                          });
+                        }
+                      }}
+                      disabled={
+                        alarm.status === "closed" ||
+                        alarm.status === "cancelled"
+                      }
+                    >
+                      {t("alarmDetail.acknowledge", "Acknowledge Alarm")}
+                    </Button>
+                  )}
+                </div>
+
+                <div>
+                  <Body size="sm" className="text-muted-foreground">
+                    {t("alarmDetail.guardAssignedAt", "Guard Assigned At")}
+                  </Body>
+                  <Body className="font-medium">
+                    {alarm.guardId
+                      ? alarm.guardAssignedAt
+                        ? formatDate(alarm.guardAssignedAt)
+                        : "-"
+                      : t(
+                          "alarmDetail.guardNotAssigned",
+                          "Guard not yet assigned",
+                        )}
+                  </Body>
+                </div>
+
+                <div>
+                  <Body size="sm" className="text-muted-foreground">
+                    {t("alarmDetail.guardArrivedAt", "Guard Arrived At")}
+                  </Body>
+                  {alarm.guardId ? (
+                    alarm.guardArrivedAt ? (
+                      <div>
+                        {isEditingArrivalTime ? (
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="datetime-local"
+                              value={arrivalTimeValue}
+                              onChange={(e) =>
+                                setArrivalTimeValue(e.target.value)
+                              }
+                              className="flex-1 px-3 py-2 bg-card border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                              disabled={
+                                alarm.status === "closed" ||
+                                alarm.status === "cancelled"
+                              }
+                            />
+                            <Button
+                              size="sm"
+                              onClick={() => {
+                                if (id && arrivalTimeValue) {
+                                  updateAlarm({
+                                    id,
+                                    guardArrivedAt: new Date(
+                                      arrivalTimeValue,
+                                    ).toISOString(),
+                                  });
+                                  setIsEditingArrivalTime(false);
+                                }
+                              }}
+                              disabled={
+                                !arrivalTimeValue ||
+                                alarm.status === "closed" ||
+                                alarm.status === "cancelled"
+                              }
+                            >
+                              Save
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setIsEditingArrivalTime(false)}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between gap-2">
+                            <Body className="font-medium">
+                              {formatDate(alarm.guardArrivedAt)}
+                            </Body>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0 !hover:bg-gray-700"
+                              onClick={() => {
+                                const date = new Date(alarm.guardArrivedAt!);
+                                const localDateTime = new Date(
+                                  date.getTime() -
+                                    date.getTimezoneOffset() * 60000,
+                                )
+                                  .toISOString()
+                                  .slice(0, 16);
+                                setArrivalTimeValue(localDateTime);
+                                setIsEditingArrivalTime(true);
+                              }}
+                              disabled={
+                                alarm.status === "closed" ||
+                                alarm.status === "cancelled"
+                              }
+                            >
+                              <Edit2 className="size-5 text-white" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (id) {
+                            updateAlarm({
+                              id,
+                              guardArrivedAt: new Date().toISOString(),
+                            });
+                          }
+                        }}
+                        disabled={
+                          alarm.status === "closed" ||
+                          alarm.status === "cancelled"
+                        }
+                      >
+                        {t(
+                          "alarmDetail.markArrival",
+                          "Mark Guard Arrived (Now)",
+                        )}
+                      </Button>
+                    )
+                  ) : (
+                    <Body className="font-medium">
+                      {t(
+                        "alarmDetail.guardNotAssigned",
+                        "Guard not yet assigned",
+                      )}
+                    </Body>
+                  )}
                 </div>
 
                 <div>
@@ -266,38 +424,35 @@ export function AlarmDetail() {
                   </div>
                 </div>
 
-                {alarm.status !== "closed" && alarm.status !== "cancelled" && (
+                {alarm.status !== "cancelled" && (
                   <div className="pt-4 border-t border-border">
-                    <Body size="sm" className="text-muted-foreground mb-2">
-                      {t("alarmDetail.actions", "Actions")}
-                    </Body>
-                    <div className="flex gap-2 flex-wrap">
-                      {alarm.status === "pending" && (
+                    {(alarm.status === "open" ||
+                      alarm.status === "acknowledged") &&
+                      !alarm.report && (
                         <Button
-                          variant="outline"
-                          onClick={() =>
-                            handleStatusChange("open" as AlarmStatus)
-                          }
+                          className="w-full text-lg bg-red-500 hover:bg-red-600"
+                          size="lg"
+                          onClick={() => {
+                            setDialogMode("create");
+                            setIsCloseCaseDialogOpen(true);
+                          }}
                         >
-                          {t("alarms.escalate", "Escalate")}
+                          Close Case
                         </Button>
                       )}
+                    {alarm.status === "closed" && alarm.report && (
                       <Button
-                        onClick={() =>
-                          handleStatusChange("closed" as AlarmStatus)
-                        }
-                      >
-                        {t("alarms.close", "Close")}
-                      </Button>
-                      <Button
+                        className="w-full text-lg"
+                        size="lg"
                         variant="outline"
-                        onClick={() =>
-                          handleStatusChange("cancelled" as AlarmStatus)
-                        }
+                        onClick={() => {
+                          setDialogMode("view");
+                          setIsCloseCaseDialogOpen(true);
+                        }}
                       >
-                        {t("alarms.cancel", "Cancel")}
+                        View Report
                       </Button>
-                    </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -314,7 +469,7 @@ export function AlarmDetail() {
                   {t("alarmDetail.noLocations", "No location updates yet")}
                 </Body>
               ) : (
-                <div className="space-y-3 max-h-64 overflow-y-auto">
+                <div className="space-y-3 max-h-[600px] overflow-y-auto">
                   {alarm.locations.map((loc, index) => (
                     <div
                       key={loc.id}
@@ -349,6 +504,16 @@ export function AlarmDetail() {
           </div>
         </div>
       </div>
+
+      <CloseCaseDialog
+        alarm={alarm}
+        open={isCloseCaseDialogOpen}
+        onOpenChange={setIsCloseCaseDialogOpen}
+        onSubmit={handleCloseCaseSubmit}
+        isLoading={isCreatingReport}
+        mode={dialogMode}
+        initialData={alarm.report}
+      />
     </div>
   );
 }

@@ -1,28 +1,17 @@
-import { ChevronDown } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router";
 
-import type { Alarm, AlarmStatus } from "@/api/types";
+import type { Alarm } from "@/api/types";
 import { Body } from "@/components/ui";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/DropdownMenu";
 
 type AlarmItemProps = {
   alarm: Alarm;
   onClick?: () => void;
-  onStatusChange?: (alarmId: string, newStatus: AlarmStatus) => void;
 };
 
-export function AlarmItem({ alarm, onClick, onStatusChange }: AlarmItemProps) {
+export function AlarmItem({ alarm, onClick }: AlarmItemProps) {
   const { t } = useTranslation();
-
-  const handleStatusChange = (newStatus: string) => {
-    onStatusChange?.(alarm.id, newStatus as AlarmStatus);
-  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -55,32 +44,20 @@ export function AlarmItem({ alarm, onClick, onStatusChange }: AlarmItemProps) {
             {alarm.longitude.toFixed(4)}
           </Body>
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            onClick={(e) => e.stopPropagation()}
-            className={`px-2 flex items-center gap-1 py-1 rounded-sm text-sm font-semibold border cursor-pointer ${getStatusColor(alarm.status)}`}
-          >
-            {alarm.status.charAt(0).toUpperCase() + alarm.status.slice(1)}
-            <ChevronDown />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent onClick={(e) => e.stopPropagation()}>
-            <DropdownMenuRadioGroup
-              value={alarm.status}
-              onValueChange={handleStatusChange}
-            >
-              <DropdownMenuRadioItem value="pending">
-                Pending
-              </DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="open">Open</DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="closed">
-                Closed
-              </DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="cancelled">
-                Cancelled
-              </DropdownMenuRadioItem>
-            </DropdownMenuRadioGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <span
+          className={`px-2 py-1 rounded-sm text-sm font-semibold border ${getStatusColor(alarm.status)}`}
+        >
+          {alarm.status.charAt(0).toUpperCase() + alarm.status.slice(1)}
+        </span>
+      </div>
+      <div className="flex justify-end mt-2">
+        <Link
+          to={`/alarms/${alarm.id}`}
+          onClick={(e) => e.stopPropagation()}
+          className="w-8 h-8 flex items-center justify-center rounded-full bg-primary hover:bg-secondary text-primary-foreground hover:bg-primary/90 transition-colors"
+        >
+          <ChevronRight size={24} />
+        </Link>
       </div>
     </li>
   );
