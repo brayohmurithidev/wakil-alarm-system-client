@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
-import { Navigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { z } from "zod";
 
 import { useLogin } from "@/api/hooks/useLogin";
@@ -117,6 +117,15 @@ export function Login() {
                   ? t("login.signingIn", "Signing in...")
                   : t("login.signIn", "Sign In")}
               </Button>
+
+              <Link to="/forgot-password" className="block text-center">
+                <Body
+                  size="sm"
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  {t("login.forgotPassword", "Forgot your password?")}
+                </Body>
+              </Link>
             </form>
           </div>
         </div>

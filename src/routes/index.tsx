@@ -3,10 +3,12 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { AlarmDetail } from "@/pages/AlarmDetail";
 import { Alarms } from "@/pages/Alarms";
 import { Dashboard } from "@/pages/Dashboard";
+import { ForgotPassword } from "@/pages/ForgotPassword";
 import { Guards } from "@/pages/Guards";
 import { History } from "@/pages/History";
 import { Login } from "@/pages/Login";
 import { Profile } from "@/pages/Profile";
+import { ResetPassword } from "@/pages/ResetPassword";
 import { Users } from "@/pages/Users";
 
 import ProtectedRoutes from "./ProtectedRoutes";
@@ -15,6 +17,8 @@ const AppRoutes = () => {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route
         path="/dashboard"
         element={
