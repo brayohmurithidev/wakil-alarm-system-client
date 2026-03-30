@@ -6,6 +6,7 @@ import { Link } from "react-router-dom";
 import { z } from "zod";
 
 import { useForgotPassword } from "@/api/hooks/useForgotPassword";
+import { notify } from "@/components/Alert/notify";
 import wakilGoldLogo from "@/assets/wakil-gold.png";
 import {
   Body,
@@ -42,7 +43,13 @@ export function ForgotPassword() {
 
   const handleSubmit = (data: FormData) => {
     forgotPassword(data, {
-      onSuccess: () => setSubmitted(true),
+      onSuccess: () => {
+        setSubmitted(true);
+        notify(t("forgotPassword.notifySuccess", "Reset link sent! Check your inbox."), { type: "success" });
+      },
+      onError: () => {
+        notify(t("forgotPassword.notifyError", "Something went wrong. Please try again."), { type: "error" });
+      },
     });
   };
 

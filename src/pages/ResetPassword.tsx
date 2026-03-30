@@ -5,6 +5,7 @@ import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { z } from "zod";
 
 import { useResetPassword } from "@/api/hooks/useResetPassword";
+import { notify } from "@/components/Alert/notify";
 import wakilGoldLogo from "@/assets/wakil-gold.png";
 import {
   Body,
@@ -51,9 +52,8 @@ export function ResetPassword() {
       { token, password: data.password },
       {
         onSuccess: () => {
-          navigate("/login", {
-            state: { message: "Password reset successfully. Please sign in." },
-          });
+          notify(t("resetPassword.notifySuccess", "Password reset successfully!"), { type: "success" });
+          navigate("/login");
         },
       },
     );
