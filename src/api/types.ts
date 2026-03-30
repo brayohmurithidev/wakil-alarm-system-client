@@ -46,6 +46,7 @@ export type AlarmReport = {
   outcome: string;
   whatHappened: string;
   learningIdentified: boolean;
+  videoRecordingId: string | null;
   createdAt: string;
   createdById: string;
   createdBy?: AdminUser;

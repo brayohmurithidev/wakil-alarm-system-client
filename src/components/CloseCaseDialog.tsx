@@ -7,6 +7,7 @@ import { z } from "zod";
 import type { Alarm, AlarmReport } from "@/api/types";
 import wakilLogo from "@/assets/wakil-gold.png";
 import {
+  FormInput,
   FormLabel,
   FormSelect,
   FormTextarea,
@@ -69,6 +70,7 @@ const closeCaseSchema = z.object({
     .min(1, "Please describe what happened")
     .min(10, "Please provide at least 10 characters"),
   learningIdentified: z.boolean().default(false),
+  videoRecordingId: z.string().optional(),
   customerContacted: z.boolean().default(false),
   customerContactedAt: z.string().optional(),
 });
@@ -103,6 +105,7 @@ export function CloseCaseDialog({
       outcome: "",
       whatHappened: "",
       learningIdentified: false,
+      videoRecordingId: "",
       customerContacted: false,
       customerContactedAt: undefined,
     },
@@ -121,6 +124,7 @@ export function CloseCaseDialog({
         outcome: initialData.outcome,
         whatHappened: initialData.whatHappened,
         learningIdentified: initialData.learningIdentified,
+        videoRecordingId: initialData.videoRecordingId || "",
         customerContacted: false,
         customerContactedAt: undefined,
       });
@@ -497,6 +501,19 @@ export function CloseCaseDialog({
                   {errors.whatHappened.message}
                 </Body>
               )}
+            </div>
+
+            <div>
+              <FormLabel htmlFor="videoRecordingId">
+                Video Recording ID (optional)
+              </FormLabel>
+              <FormInput
+                id="videoRecordingId"
+                type="text"
+                placeholder="e.g. REC-2026-03842"
+                {...register("videoRecordingId")}
+                disabled={isViewMode}
+              />
             </div>
           </div>
         </form>

@@ -40,7 +40,7 @@ export function Guards() {
     if (!deleteTarget) return;
     deleteGuard(deleteTarget.id, {
       onSuccess: () => {
-        notify(t("guards.deleteSuccess", "Guard deactivated successfully"), {
+        notify(t("guards.deleteSuccess", "Guard deleted successfully"), {
           type: "success",
         });
         setDeleteTarget(null);
@@ -104,14 +104,7 @@ export function Guards() {
                 {guards.map((guard) => (
                   <tr key={guard.id} className="hover:bg-muted/50">
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <Body className="font-medium">{guard.name}</Body>
-                        {!guard.isActive && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-500/10 text-gray-500">
-                            {t("guards.inactive", "Inactive")}
-                          </span>
-                        )}
-                      </div>
+                      <Body className="font-medium">{guard.name}</Body>
                     </td>
                     <td className="px-6 py-4">
                       <Body>{guard.phone}</Body>
@@ -128,16 +121,14 @@ export function Guards() {
                       <Body size="sm">{formatDate(guard.createdAt)}</Body>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      {guard.isActive && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setDeleteTarget({ id: guard.id, name: guard.name })}
-                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setDeleteTarget({ id: guard.id, name: guard.name })}
+                        className="border-transparent text-muted-foreground hover:text-destructive hover:bg-destructive/10 hover:border-destructive/20"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </td>
                   </tr>
                 ))}
@@ -162,13 +153,13 @@ export function Guards() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="text-xl text-gray-200">
-              {t("guards.deleteTitle", "Deactivate Guard")}
+              {t("guards.deleteTitle", "Delete Guard")}
             </DialogTitle>
           </DialogHeader>
           <Body>
             {t(
               "guards.deleteConfirm",
-              `Are you sure you want to deactivate "${deleteTarget?.name}"? They will no longer be assignable to alarms.`,
+              `Are you sure you want to delete "${deleteTarget?.name}"? This action cannot be undone.`,
             )}
           </Body>
           <DialogFooter>
@@ -185,8 +176,8 @@ export function Guards() {
               disabled={isDeleting}
             >
               {isDeleting
-                ? t("guards.deactivating", "Deactivating...")
-                : t("guards.deactivate", "Deactivate")}
+                ? t("guards.deleting", "Deleting...")
+                : t("guards.delete", "Delete")}
             </Button>
           </DialogFooter>
         </DialogContent>
