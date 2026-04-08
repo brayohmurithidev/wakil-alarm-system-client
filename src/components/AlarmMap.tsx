@@ -7,6 +7,7 @@ import iconShadow from "leaflet/dist/images/marker-shadow.png";
 import { useEffect } from "react";
 import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
 
+import type { TrackerLocation } from "@/api/hooks/useGetTrackerLocation";
 import type { Alarm, AlarmStatus } from "@/api/types";
 
 const DefaultIcon = L.icon({
@@ -57,8 +58,30 @@ const getMarkerIcon = (status: AlarmStatus) => {
   });
 };
 
+const getTrackerIcon = () => {
+  return L.divIcon({
+    className: "custom-marker",
+    html: `
+      <div style="
+        position: relative;
+        width: 36px;
+        height: 36px;
+      ">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="#10b981" stroke="white" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M8 12l2-4h4l2 4-2 4h-4l-2-4z" fill="white" stroke="none"/>
+        </svg>
+      </div>
+    `,
+    iconSize: [36, 36],
+    iconAnchor: [18, 18],
+    popupAnchor: [0, -18],
+  });
+};
+
 type AlarmMapProps = {
   alarms: Alarm[];
+  trackers?: TrackerLocation[];
   focusedAlarmId?: string | null;
 };
 
@@ -86,7 +109,7 @@ function MapFocusHandler({
   return null;
 }
 
-export function AlarmMap({ alarms, focusedAlarmId }: AlarmMapProps) {
+export function AlarmMap({ alarms, trackers, focusedAlarmId }: AlarmMapProps) {
   const defaultCenter: [number, number] = [-1.2921, 36.8219];
 
   const center: [number, number] =
@@ -123,6 +146,29 @@ export function AlarmMap({ alarms, focusedAlarmId }: AlarmMapProps) {
               </p>
               <p className="text-xs text-gray-400 mt-1">
                 {new Date(alarm.createdAt).toLocaleString()}
+              </p>
+            </div>
+          </Popup>
+        </Marker>
+      ))}
+      {trackers?.map((tracker) => (
+        <Marker
+          key={tracker.imei}
+          position={[tracker.latitude, tracker.longitude]}
+          icon={getTrackerIcon()}
+        >
+          <Popup>
+            <div className="p-2">
+              <h3 className="font-bold text-lg">Motorcycle</h3>
+              <p className="text-sm text-gray-600">IMEI: {tracker.imei}</p>
+              <p className="text-xs text-gray-500 mt-1">
+                Speed: {tracker.speed} km/h
+              </p>
+              <p className="text-xs text-gray-500">
+                Battery: {tracker.battery}%
+              </p>
+              <p className="text-xs text-gray-400 mt-1">
+                {tracker.gpsTime}
               </p>
             </div>
           </Popup>

@@ -424,37 +424,36 @@ export function AlarmDetail() {
                   </div>
                 </div>
 
-                {alarm.status !== "cancelled" && (
-                  <div className="pt-4 border-t border-border">
-                    {(alarm.status === "open" ||
-                      alarm.status === "acknowledged") &&
-                      !alarm.report && (
-                        <Button
-                          className="w-full text-lg bg-red-500 hover:bg-red-600"
-                          size="lg"
-                          onClick={() => {
-                            setDialogMode("create");
-                            setIsCloseCaseDialogOpen(true);
-                          }}
-                        >
-                          Close Case
-                        </Button>
-                      )}
-                    {alarm.status === "closed" && alarm.report && (
+                <div className="pt-4 border-t border-border">
+                  {(alarm.status === "open" ||
+                    alarm.status === "acknowledged" ||
+                    (alarm.status === "cancelled" && !alarm.report)) &&
+                    !alarm.report && (
                       <Button
-                        className="w-full text-lg"
+                        className="w-full text-lg bg-red-500 hover:bg-red-600"
                         size="lg"
-                        variant="outline"
                         onClick={() => {
-                          setDialogMode("view");
+                          setDialogMode("create");
                           setIsCloseCaseDialogOpen(true);
                         }}
                       >
-                        View Report
+                        {alarm.status === "cancelled" ? "Fill Report & Close" : "Close Case"}
                       </Button>
                     )}
-                  </div>
-                )}
+                  {alarm.status === "closed" && alarm.report && (
+                    <Button
+                      className="w-full text-lg"
+                      size="lg"
+                      variant="outline"
+                      onClick={() => {
+                        setDialogMode("view");
+                        setIsCloseCaseDialogOpen(true);
+                      }}
+                    >
+                      View Report
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
 
