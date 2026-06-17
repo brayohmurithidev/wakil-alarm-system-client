@@ -30,6 +30,7 @@ export const useGetTrackerLocation = () => {
   return useQuery({
     queryKey: ["trackers", "location"],
     queryFn: getTrackerLocation,
-    refetchInterval: 10000, // Refresh every 10 seconds
+    enabled: false, // Disabled until iTrack API access is granted
+    // refetchInterval: 10000, // TODO: Re-enable when iTrack works
   });
 };
