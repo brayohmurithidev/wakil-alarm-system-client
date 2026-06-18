@@ -40,10 +40,8 @@ export function CreateGuardDialog({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     createGuard(formData, {
-      onSuccess: () => {
-        notify(t("guards.form.success", "Guard created successfully!"), {
-          type: "success",
-        });
+      onSuccess: (data) => {
+        notify(data.message, { type: "success" });
         onOpenChange(false);
         setFormData({ name: "", phone: "", email: "" });
       },
@@ -108,7 +106,7 @@ export function CreateGuardDialog({
 
           <FormGroup>
             <FormLabel htmlFor="guard-email">
-              {t("guards.form.email", "Email (optional)")}
+              {t("guards.form.email", "Email")}
             </FormLabel>
             <FormInput
               id="guard-email"
@@ -117,8 +115,15 @@ export function CreateGuardDialog({
               onChange={(e) =>
                 setFormData({ ...formData, email: e.target.value })
               }
+              required
               disabled={isPending}
             />
+            <p className="text-xs text-muted-foreground mt-1">
+              {t(
+                "guards.form.emailHint",
+                "The guard's login code is sent to this address.",
+              )}
+            </p>
           </FormGroup>
 
           {error && (

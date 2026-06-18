@@ -7,10 +7,8 @@ type Config = {
 
 const configs: Record<Environment, Config> = {
   local: {
-    // environment: "local",
-    // apiUrl: "http://localhost:3000",
-    environment: "production",
-    apiUrl: "https://api-production.wakilsecurity.com",
+    environment: "local",
+    apiUrl: "http://localhost:3000",
   },
   production: {
     environment: "production",

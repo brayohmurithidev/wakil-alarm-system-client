@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
+import type { Guard } from "@/api/types";
 import axiosInstance from "@/lib/axios";
 
 import { queryKeys } from "../queryKeys";
@@ -7,17 +8,12 @@ import { queryKeys } from "../queryKeys";
 type CreateGuardParams = {
   name: string;
   phone: string;
-  email?: string;
+  email: string;
 };
 
 type CreateGuardResponse = {
   message: string;
-  guard: {
-    id: string;
-    name: string;
-    phone: string;
-    email: string | null;
-  };
+  guard: Guard;
 };
 
 const createGuardFn = async (

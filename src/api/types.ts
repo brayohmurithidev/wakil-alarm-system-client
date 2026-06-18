@@ -26,14 +26,28 @@ export type AlarmLocation = {
   timestamp: string;
 };
 
+export type GuardStatus = "offline" | "available" | "busy";
+
 export type Guard = {
   id: string;
   name: string;
   phone: string;
   email: string | null;
   isActive: boolean;
+  mustChangePassword: boolean;
+  otpExpiresAt?: string | null;
+  rank: string | null;
+  dateOfBirth: string | null;
+  idNumber: string | null;
+  licenseNumber: string | null;
+  bloodGroup: string | null;
+  avatarUrl: string | null;
+  status: GuardStatus;
+  lastActiveAt: string | null;
+  hasPushToken: boolean;
   createdAt: string;
   updatedAt: string;
+  alarms?: Array<{ id: string; status: AlarmStatus; createdAt: string }>;
 };
 
 export type AlarmReport = {

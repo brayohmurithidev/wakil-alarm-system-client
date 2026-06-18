@@ -1,23 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 
+import type { Guard } from "@/api/types";
 import axiosInstance from "@/lib/axios";
 
 import { queryKeys } from "../queryKeys";
-
-export type Guard = {
-  id: string;
-  name: string;
-  phone: string;
-  email: string | null;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-  alarms: Array<{
-    id: string;
-    status: string;
-    createdAt: string;
-  }>;
-};
 
 type GetGuardsParams = {
   isActive?: boolean;

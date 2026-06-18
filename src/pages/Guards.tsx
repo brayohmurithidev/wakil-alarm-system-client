@@ -1,11 +1,14 @@
-import { Plus, ShieldUser, Trash2 } from "lucide-react";
+import { KeyRound, Plus, ShieldUser, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useDeleteGuard } from "@/api/hooks/useDeleteGuard";
 import { useGetGuards } from "@/api/hooks/useGetGuards";
+import { useResendGuardOtp } from "@/api/hooks/useResendGuardOtp";
+import type { Guard } from "@/api/types";
 import { notify } from "@/components/Alert/notify";
 import { CreateGuardDialog } from "@/components/CreateGuardDialog";
+import { GuardStatusBadge } from "@/components/GuardStatusBadge";
 import { PageHeader } from "@/components/PageHeader";
 import { Body, Button } from "@/components/ui";
 import {
@@ -23,16 +26,22 @@ export function Guards() {
     id: string;
     name: string;
   } | null>(null);
+  const [resendOtpTarget, setResendOtpTarget] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
   const { data: guards, isLoading } = useGetGuards();
 
   const { mutate: deleteGuard, isPending: isDeleting } = useDeleteGuard();
+  const { mutate: resendGuardOtp, isPending: isResending } =
+    useResendGuardOtp();
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString();
   };
 
-  const getActiveAlarmsCount = (guard: any) => {
+  const getActiveAlarmsCount = (guard: Guard) => {
     return guard.alarms?.length || 0;
   };
 
@@ -40,7 +49,7 @@ export function Guards() {
     if (!deleteTarget) return;
     deleteGuard(deleteTarget.id, {
       onSuccess: () => {
-        notify(t("guards.deleteSuccess", "Guard deleted successfully"), {
+        notify(t("guards.deactivateSuccess", "Guard deactivated successfully"), {
           type: "success",
         });
         setDeleteTarget(null);
@@ -48,7 +57,24 @@ export function Guards() {
       onError: (error: any) => {
         notify(
           error?.response?.data?.error ||
-            t("guards.deleteError", "Failed to deactivate guard"),
+            t("guards.deactivateError", "Failed to deactivate guard"),
+          { type: "error" },
+        );
+      },
+    });
+  };
+
+  const handleResendOtp = () => {
+    if (!resendOtpTarget) return;
+    resendGuardOtp(resendOtpTarget.id, {
+      onSuccess: (data) => {
+        notify(data.message, { type: "success" });
+        setResendOtpTarget(null);
+      },
+      onError: (error: any) => {
+        notify(
+          error?.response?.data?.error ||
+            t("guards.resendOtpError", "Failed to resend login code"),
           { type: "error" },
         );
       },
@@ -90,6 +116,9 @@ export function Guards() {
                     {t("guards.table.email", "Email")}
                   </th>
                   <th className="px-6 py-3 text-left text-sm font-medium text-foreground">
+                    {t("guards.table.status", "Status")}
+                  </th>
+                  <th className="px-6 py-3 text-left text-sm font-medium text-foreground">
                     {t("guards.table.activeAlarms", "Active Alarms")}
                   </th>
                   <th className="px-6 py-3 text-left text-sm font-medium text-foreground">
@@ -113,6 +142,12 @@ export function Guards() {
                       <Body size="sm">{guard.email || "-"}</Body>
                     </td>
                     <td className="px-6 py-4">
+                      <GuardStatusBadge
+                        isActive={guard.isActive}
+                        mustChangePassword={guard.mustChangePassword}
+                      />
+                    </td>
+                    <td className="px-6 py-4">
                       <Body className="font-medium">
                         {getActiveAlarmsCount(guard)}
                       </Body>
@@ -121,14 +156,30 @@ export function Guards() {
                       <Body size="sm">{formatDate(guard.createdAt)}</Body>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setDeleteTarget({ id: guard.id, name: guard.name })}
-                        className="border-transparent text-muted-foreground hover:text-destructive hover:bg-destructive/10 hover:border-destructive/20"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      {guard.isActive && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            setResendOtpTarget({ id: guard.id, name: guard.name })
+                          }
+                          className="border-transparent text-muted-foreground hover:text-foreground hover:bg-muted mr-2"
+                          title={t("guards.resendOtp", "Resend login code")}
+                        >
+                          <KeyRound className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {guard.isActive && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setDeleteTarget({ id: guard.id, name: guard.name })}
+                          className="border-transparent text-muted-foreground hover:text-destructive hover:bg-destructive/10 hover:border-destructive/20"
+                          title={t("guards.deactivate", "Deactivate guard")}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -153,13 +204,13 @@ export function Guards() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="text-xl text-gray-200">
-              {t("guards.deleteTitle", "Delete Guard")}
+              {t("guards.deactivateTitle", "Deactivate Guard")}
             </DialogTitle>
           </DialogHeader>
           <Body>
             {t(
-              "guards.deleteConfirm",
-              `Are you sure you want to delete "${deleteTarget?.name}"? This action cannot be undone.`,
+              "guards.deactivateConfirm",
+              `Deactivate "${deleteTarget?.name}"? They'll no longer be able to log in or be assigned to new dispatches.`,
             )}
           </Body>
           <DialogFooter>
@@ -176,8 +227,41 @@ export function Guards() {
               disabled={isDeleting}
             >
               {isDeleting
-                ? t("guards.deleting", "Deleting...")
-                : t("guards.delete", "Delete")}
+                ? t("guards.deactivating", "Deactivating...")
+                : t("guards.deactivate", "Deactivate")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!resendOtpTarget}
+        onOpenChange={() => !isResending && setResendOtpTarget(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-xl text-gray-200">
+              {t("guards.resendOtpTitle", "Resend Login Code")}
+            </DialogTitle>
+          </DialogHeader>
+          <Body>
+            {t(
+              "guards.resendOtpConfirm",
+              `Send "${resendOtpTarget?.name}" a new login code? Their current password will stop working until they log in with the new code and set a new one.`,
+            )}
+          </Body>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setResendOtpTarget(null)}
+              disabled={isResending}
+            >
+              {t("common.cancel", "Cancel")}
+            </Button>
+            <Button onClick={handleResendOtp} disabled={isResending}>
+              {isResending
+                ? t("guards.resendingOtp", "Sending...")
+                : t("guards.resendOtp", "Resend Code")}
             </Button>
           </DialogFooter>
         </DialogContent>
