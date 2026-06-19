@@ -1,4 +1,4 @@
-type Environment = "local" | "production";
+type Environment = "local" | "staging" | "production";
 
 type Config = {
   environment: Environment;
@@ -9,6 +9,10 @@ const configs: Record<Environment, Config> = {
   local: {
     environment: "local",
     apiUrl: "http://localhost:3000",
+  },
+  staging: {
+    environment: "staging",
+    apiUrl: "https://wakil-alarm-api.fazilabs.com",
   },
   production: {
     environment: "production",
