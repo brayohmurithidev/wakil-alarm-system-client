@@ -89,6 +89,7 @@ export type Alarm = {
   closedBy?: AdminUser | null;
   closedAt?: string | null;
   guardAssignedAt?: string | null;
+  guardAcknowledgedAt?: string | null;
   guardArrivedAt?: string | null;
   report?: AlarmReport | null;
 };

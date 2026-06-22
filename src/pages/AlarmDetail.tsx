@@ -274,6 +274,28 @@ export function AlarmDetail() {
 
                 <div>
                   <Body size="sm" className="text-muted-foreground">
+                    {t(
+                      "alarmDetail.guardAcknowledgedAt",
+                      "Guard Acknowledged At",
+                    )}
+                  </Body>
+                  <Body className="font-medium">
+                    {alarm.guardId
+                      ? alarm.guardAcknowledgedAt
+                        ? formatDate(alarm.guardAcknowledgedAt)
+                        : t(
+                            "alarmDetail.guardNotAcknowledged",
+                            "Not yet acknowledged by guard",
+                          )
+                      : t(
+                          "alarmDetail.guardNotAssigned",
+                          "Guard not yet assigned",
+                        )}
+                  </Body>
+                </div>
+
+                <div>
+                  <Body size="sm" className="text-muted-foreground">
                     {t("alarmDetail.guardArrivedAt", "Guard Arrived At")}
                   </Body>
                   {alarm.guardId ? (

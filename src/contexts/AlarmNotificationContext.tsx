@@ -99,6 +99,30 @@ export const AlarmNotificationProvider: React.FC<{
       }
     });
 
+    socket.on(
+      "alarm:guard-acknowledged",
+      (update: { id: string; guardId: string; guardAcknowledgedAt: string }) => {
+        queryClient.invalidateQueries({ queryKey: [queryKeys.alarms] });
+        if (update.id) {
+          queryClient.invalidateQueries({
+            queryKey: [queryKeys.alarm, update.id],
+          });
+        }
+      },
+    );
+
+    socket.on(
+      "alarm:guard-arrived",
+      (update: { id: string; guardId: string; guardArrivedAt: string }) => {
+        queryClient.invalidateQueries({ queryKey: [queryKeys.alarms] });
+        if (update.id) {
+          queryClient.invalidateQueries({
+            queryKey: [queryKeys.alarm, update.id],
+          });
+        }
+      },
+    );
+
     return () => {
       socket.disconnect();
     };
