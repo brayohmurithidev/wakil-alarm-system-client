@@ -59,7 +59,7 @@ export function Profile() {
         }
       />
 
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-3xl">
         <div className="bg-card rounded-lg shadow-md p-6">
           <Heading size="lg" className="mb-6">
             {t("profile.info", "Account Information")}
