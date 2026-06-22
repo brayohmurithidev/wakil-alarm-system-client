@@ -10,11 +10,11 @@ type PageHeaderProps = {
 
 export function PageHeader({ title, icon, actions }: PageHeaderProps) {
   return (
-    <header className="p-8">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2  text-white">
+    <header className="p-4 sm:p-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2 text-white">
           {icon}
-          <Heading size="xxl" className="text-3xl">
+          <Heading size="xxl" className="text-2xl sm:text-3xl">
             {title}
           </Heading>
         </div>

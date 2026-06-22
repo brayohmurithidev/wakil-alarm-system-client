@@ -89,7 +89,7 @@ export function History() {
   if (iseGetAlarmsError) return null;
 
   return (
-    <div className="min-w-7xl">
+    <div className="w-full max-w-7xl mx-auto">
       <PageHeader
         title={t("history.title", "History")}
         icon={<HistoryIcon size={30} />}

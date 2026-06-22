@@ -104,7 +104,7 @@ export function Guards() {
   };
 
   return (
-    <div className="min-w-7xl">
+    <div className="w-full max-w-7xl mx-auto">
       <PageHeader
         title={t("guards.title", "Guards")}
         icon={<ShieldUser size={30} />}

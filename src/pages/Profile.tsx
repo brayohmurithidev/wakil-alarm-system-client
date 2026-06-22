@@ -47,7 +47,7 @@ export function Profile() {
   if (!adminUser) return null;
 
   return (
-    <div className="min-w-7xl">
+    <div className="w-full max-w-7xl mx-auto">
       <PageHeader
         title={t("profile.title", "Profile")}
         icon={<User size={30} />}
