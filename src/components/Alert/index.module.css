@@ -1,7 +1,7 @@
 .notificationsContainer {
   right: 1rem;
   top: 8rem;
-  z-index: 9000;
+  z-index: 10001;
   width: 24rem;
   padding: 0;
 }

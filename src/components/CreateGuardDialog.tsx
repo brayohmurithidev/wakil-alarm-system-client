@@ -1,5 +1,5 @@
 import { Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 
 import { useCreateGuard } from "@/api/hooks/useCreateGuard";
@@ -24,6 +24,12 @@ type CreateGuardDialogProps = {
   onOpenChange: (open: boolean) => void;
 };
 
+type CreateGuardFormData = {
+  name: string;
+  phone: string;
+  email: string;
+};
+
 export function CreateGuardDialog({
   open,
   onOpenChange,
@@ -31,23 +37,25 @@ export function CreateGuardDialog({
   const { t } = useTranslation();
   const { mutate: createGuard, isPending, error } = useCreateGuard();
 
-  const [formData, setFormData] = useState({
-    name: "",
-    phone: "",
-    email: "",
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<CreateGuardFormData>({
+    defaultValues: { name: "", phone: "", email: "" },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    createGuard(formData, {
-      onSuccess: (data) => {
-        notify(data.message, { type: "success" });
+  const onSubmit = (data: CreateGuardFormData) => {
+    createGuard(data, {
+      onSuccess: (response) => {
+        notify(response.message, { type: "success" });
         onOpenChange(false);
-        setFormData({ name: "", phone: "", email: "" });
+        reset();
       },
-      onError: (error: any) => {
+      onError: (err: any) => {
         notify(
-          error?.response?.data?.error ||
+          err?.response?.data?.error ||
             t("guards.form.error", "Failed to create guard"),
           { type: "error" },
         );
@@ -58,7 +66,7 @@ export function CreateGuardDialog({
   const handleClose = () => {
     if (!isPending) {
       onOpenChange(false);
-      setFormData({ name: "", phone: "", email: "" });
+      reset();
     }
   };
 
@@ -71,7 +79,7 @@ export function CreateGuardDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <FormGroup>
             <FormLabel htmlFor="guard-name">
               {t("guards.form.name", "Name")}
@@ -79,13 +87,12 @@ export function CreateGuardDialog({
             <FormInput
               id="guard-name"
               type="text"
-              value={formData.name}
-              onChange={(e) =>
-                setFormData({ ...formData, name: e.target.value })
-              }
-              required
+              {...register("name", {
+                required: t("guards.form.nameRequired", "Name is required"),
+              })}
               disabled={isPending}
             />
+            {errors.name && <FormError>{errors.name.message}</FormError>}
           </FormGroup>
 
           <FormGroup>
@@ -95,13 +102,19 @@ export function CreateGuardDialog({
             <FormInput
               id="guard-phone"
               type="tel"
-              value={formData.phone}
-              onChange={(e) =>
-                setFormData({ ...formData, phone: e.target.value })
-              }
-              required
+              {...register("phone", {
+                required: t("guards.form.phoneRequired", "Phone is required"),
+                pattern: {
+                  value: /^\+?[0-9\s-]{7,15}$/,
+                  message: t(
+                    "guards.form.phoneInvalid",
+                    "Invalid phone number",
+                  ),
+                },
+              })}
               disabled={isPending}
             />
+            {errors.phone && <FormError>{errors.phone.message}</FormError>}
           </FormGroup>
 
           <FormGroup>
@@ -111,13 +124,19 @@ export function CreateGuardDialog({
             <FormInput
               id="guard-email"
               type="email"
-              value={formData.email}
-              onChange={(e) =>
-                setFormData({ ...formData, email: e.target.value })
-              }
-              required
+              {...register("email", {
+                required: t("guards.form.emailRequired", "Email is required"),
+                pattern: {
+                  value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                  message: t(
+                    "guards.form.emailInvalid",
+                    "Invalid email address",
+                  ),
+                },
+              })}
               disabled={isPending}
             />
+            {errors.email && <FormError>{errors.email.message}</FormError>}
             <p className="text-xs text-muted-foreground mt-1">
               {t(
                 "guards.form.emailHint",

@@ -1,5 +1,5 @@
-import { KeyRound, Plus, ShieldUser, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { KeyRound, Plus, Search, ShieldUser, Trash2, X } from "lucide-react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useDeleteGuard } from "@/api/hooks/useDeleteGuard";
@@ -10,7 +10,7 @@ import { notify } from "@/components/Alert/notify";
 import { CreateGuardDialog } from "@/components/CreateGuardDialog";
 import { GuardStatusBadge } from "@/components/GuardStatusBadge";
 import { PageHeader } from "@/components/PageHeader";
-import { Body, Button } from "@/components/ui";
+import { Body, Button, Input } from "@/components/ui";
 import {
   Dialog,
   DialogContent,
@@ -18,10 +18,22 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/Dialog/dialog";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+
+const GUARD_TABLE_COLUMNS = 7;
 
 export function Guards() {
   const { t } = useTranslation();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [search, setSearch] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<{
     id: string;
     name: string;
@@ -32,6 +44,16 @@ export function Guards() {
   } | null>(null);
 
   const { data: guards, isLoading } = useGetGuards();
+
+  const filteredGuards = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return guards;
+    return guards?.filter((guard) =>
+      [guard.name, guard.phone, guard.email]
+        .filter(Boolean)
+        .some((field) => field!.toLowerCase().includes(query)),
+    );
+  }, [guards, search]);
 
   const { mutate: deleteGuard, isPending: isDeleting } = useDeleteGuard();
   const { mutate: resendGuardOtp, isPending: isResending } =
@@ -96,66 +118,97 @@ export function Guards() {
         }
       />
 
-      {isLoading ? (
-        <div className="text-center py-8">
-          <Body>{t("common.loading", "Loading...")}</Body>
-        </div>
-      ) : guards && guards.length > 0 ? (
-        <div className="bg-card rounded-lg shadow-md overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-muted">
-                <tr>
-                  <th className="px-6 py-3 text-left text-sm font-medium text-foreground">
-                    {t("guards.table.name", "Name")}
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-medium text-foreground">
-                    {t("guards.table.phone", "Phone")}
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-medium text-foreground">
-                    {t("guards.table.email", "Email")}
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-medium text-foreground">
-                    {t("guards.table.status", "Status")}
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-medium text-foreground">
-                    {t("guards.table.activeAlarms", "Active Alarms")}
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-medium text-foreground">
-                    {t("guards.table.joined", "Joined")}
-                  </th>
-                  <th className="px-6 py-3 text-right text-sm font-medium text-foreground">
-                    {t("guards.table.actions", "Actions")}
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {guards.map((guard) => (
-                  <tr key={guard.id} className="hover:bg-muted/50">
-                    <td className="px-6 py-4">
+      <div className="relative mb-4 max-w-sm">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder={t(
+            "guards.searchPlaceholder",
+            "Search by name, phone, or email",
+          )}
+          className="pl-9"
+        />
+        {search && (
+          <button
+            type="button"
+            onClick={() => setSearch("")}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            aria-label={t("common.clear", "Clear")}
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+
+      <div className="bg-card rounded-lg shadow-md overflow-hidden">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted hover:bg-muted">
+                <TableHead className="px-6 py-3">
+                  {t("guards.table.name", "Name")}
+                </TableHead>
+                <TableHead className="px-6 py-3">
+                  {t("guards.table.phone", "Phone")}
+                </TableHead>
+                <TableHead className="px-6 py-3">
+                  {t("guards.table.email", "Email")}
+                </TableHead>
+                <TableHead className="px-6 py-3">
+                  {t("guards.table.status", "Status")}
+                </TableHead>
+                <TableHead className="px-6 py-3">
+                  {t("guards.table.activeAlarms", "Active Alarms")}
+                </TableHead>
+                <TableHead className="px-6 py-3">
+                  {t("guards.table.joined", "Joined")}
+                </TableHead>
+                <TableHead className="px-6 py-3 text-right">
+                  {t("guards.table.actions", "Actions")}
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i}>
+                    {Array.from({ length: GUARD_TABLE_COLUMNS }).map(
+                      (_, col) => (
+                        <TableCell key={col} className="px-6 py-4">
+                          <Skeleton className="h-4 w-full max-w-32" />
+                        </TableCell>
+                      ),
+                    )}
+                  </TableRow>
+                ))
+              ) : filteredGuards && filteredGuards.length > 0 ? (
+                filteredGuards.map((guard) => (
+                  <TableRow key={guard.id}>
+                    <TableCell className="px-6 py-4">
                       <Body className="font-medium">{guard.name}</Body>
-                    </td>
-                    <td className="px-6 py-4">
+                    </TableCell>
+                    <TableCell className="px-6 py-4">
                       <Body>{guard.phone}</Body>
-                    </td>
-                    <td className="px-6 py-4">
+                    </TableCell>
+                    <TableCell className="px-6 py-4">
                       <Body size="sm">{guard.email || "-"}</Body>
-                    </td>
-                    <td className="px-6 py-4">
+                    </TableCell>
+                    <TableCell className="px-6 py-4">
                       <GuardStatusBadge
                         isActive={guard.isActive}
                         mustChangePassword={guard.mustChangePassword}
                       />
-                    </td>
-                    <td className="px-6 py-4">
+                    </TableCell>
+                    <TableCell className="px-6 py-4">
                       <Body className="font-medium">
                         {getActiveAlarmsCount(guard)}
                       </Body>
-                    </td>
-                    <td className="px-6 py-4">
+                    </TableCell>
+                    <TableCell className="px-6 py-4">
                       <Body size="sm">{formatDate(guard.createdAt)}</Body>
-                    </td>
-                    <td className="px-6 py-4 text-right">
+                    </TableCell>
+                    <TableCell className="px-6 py-4 text-right">
                       {guard.isActive && (
                         <Button
                           variant="outline"
@@ -180,20 +233,30 @@ export function Guards() {
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow className="hover:bg-transparent">
+                  <TableCell
+                    colSpan={GUARD_TABLE_COLUMNS}
+                    className="px-6 py-8 text-center"
+                  >
+                    <Body className="text-muted-foreground">
+                      {search
+                        ? t(
+                            "guards.noSearchResults",
+                            "No guards match your search",
+                          )
+                        : t("guards.noGuards", "No guards found")}
+                    </Body>
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         </div>
-      ) : (
-        <div className="text-center py-8 bg-card rounded-lg">
-          <Body className="text-muted-foreground">
-            {t("guards.noGuards", "No guards found")}
-          </Body>
-        </div>
-      )}
+      </div>
 
       <CreateGuardDialog
         open={createDialogOpen}
