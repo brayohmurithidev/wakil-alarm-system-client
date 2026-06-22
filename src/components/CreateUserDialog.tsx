@@ -10,7 +10,6 @@ import {
   FormGroup,
   FormInput,
   FormLabel,
-  FormSelect,
 } from "@/components/FormGroup/FormGroup";
 import { Button } from "@/components/ui";
 import {
@@ -20,6 +19,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/Dialog/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/Select";
 
 type CreateUserDialogProps = {
   open: boolean;
@@ -161,17 +167,24 @@ export function CreateUserDialog({
 
           <FormGroup>
             <FormLabel htmlFor="role">{t("users.form.role", "Role")}</FormLabel>
-            <FormSelect
-              id="role"
-              value={roleOptions.find((opt) => opt.value === formData.role)}
-              onChange={(option) => {
-                if (option && "value" in option) {
-                  setFormData({ ...formData, role: option.value as AdminRole });
-                }
-              }}
-              options={roleOptions}
-              isDisabled={isPending}
-            />
+            <Select
+              value={formData.role}
+              onValueChange={(value) =>
+                setFormData({ ...formData, role: value as AdminRole })
+              }
+              disabled={isPending}
+            >
+              <SelectTrigger id="role">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {roleOptions.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </FormGroup>
 
           {error && (

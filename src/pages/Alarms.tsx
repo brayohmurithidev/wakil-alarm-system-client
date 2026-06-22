@@ -1,4 +1,4 @@
-import { Loader2, UserPlus } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
@@ -6,13 +6,23 @@ import { useNavigate } from "react-router-dom";
 import { useGetAlarms } from "@/api/hooks/useGetAlarms";
 import { useGetGuards } from "@/api/hooks/useGetGuards";
 import { useUpdateAlarm } from "@/api/hooks/useUpdateAlarm";
-import { notify } from "@/components/Alert/notify";
 import { AlarmStatusBadge } from "@/components/AlarmStatusBadge";
-import { FormSelect } from "@/components/FormGroup/FormGroup";
+import { notify } from "@/components/Alert/notify";
 import { AlarmIcon } from "@/components/icons/AlarmIcon";
 import { Loading } from "@/components/Loading";
 import { PageHeader } from "@/components/PageHeader";
 import { Body } from "@/components/ui";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/Select";
+
+// Radix Select rejects an empty-string item value, so unassigning a guard
+// needs an explicit sentinel item rather than a clearable empty state.
+const UNASSIGNED_GUARD = "__unassigned__";
 
 export function Alarms() {
   const { t } = useTranslation();
@@ -120,43 +130,35 @@ export function Alarms() {
                     >
                       <div className="flex items-center gap-2">
                         <div className="flex-1">
-                          <FormSelect
-                            value={
-                              alarm.guardId && guards
-                                ? guards
-                                    .filter((g) => g.id === alarm.guardId)
-                                    .map((g) => ({
-                                      value: g.id,
-                                      label: g.name,
-                                    }))[0] || null
-                                : null
-                            }
-                            onChange={(option) => {
-                              if (option && "value" in option) {
-                                handleGuardAssign(alarm.id, option.value);
-                              } else if (option === null) {
+                          <Select
+                            value={alarm.guardId ?? UNASSIGNED_GUARD}
+                            onValueChange={(value) => {
+                              if (value === UNASSIGNED_GUARD) {
                                 setUpdatingAlarmId(alarm.id);
                                 updateAlarm({
                                   id: alarm.id,
                                   guardId: null as any,
                                 });
+                              } else {
+                                handleGuardAssign(alarm.id, value);
                               }
                             }}
-                            options={
-                              guards?.map((guard) => ({
-                                value: guard.id,
-                                label: guard.name,
-                              })) || []
-                            }
-                            placeholder={
-                              <div className="flex items-center gap-2">
-                                <UserPlus className="h-4 w-4" />
-                                {t("alarms.assignGuard", "Assign Guard")}
-                              </div>
-                            }
-                            isDisabled={updatingAlarmId === alarm.id}
-                            isClearable
-                          />
+                            disabled={updatingAlarmId === alarm.id}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value={UNASSIGNED_GUARD}>
+                                {t("alarmDetail.unassigned", "Unassigned")}
+                              </SelectItem>
+                              {guards?.map((guard) => (
+                                <SelectItem key={guard.id} value={guard.id}>
+                                  {guard.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                         {updatingAlarmId === alarm.id && (
                           <Loader2 className="h-4 w-4 animate-spin text-muted-foreground shrink-0" />

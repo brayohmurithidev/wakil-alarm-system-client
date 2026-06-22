@@ -11,7 +11,6 @@ import {
   FormGroup,
   FormInput,
   FormLabel,
-  FormSelect,
 } from "@/components/FormGroup/FormGroup";
 import { Button } from "@/components/ui";
 import {
@@ -21,6 +20,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/Dialog/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/Select";
 
 type UpdateUserDialogProps = {
   open: boolean;
@@ -235,17 +241,22 @@ export function UpdateUserDialog({
                 required: t("users.form.roleRequired", "Role is required"),
               }}
               render={({ field }) => (
-                <FormSelect
-                  id="role"
-                  value={roleOptions.find((opt) => opt.value === field.value)}
-                  onChange={(option) => {
-                    if (option && "value" in option) {
-                      field.onChange(option.value);
-                    }
-                  }}
-                  options={roleOptions}
-                  isDisabled={isPending}
-                />
+                <Select
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  disabled={isPending}
+                >
+                  <SelectTrigger id="role">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {roleOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               )}
             />
             {errors.role && <FormError>{errors.role.message}</FormError>}
@@ -262,24 +273,19 @@ export function UpdateUserDialog({
                 required: t("users.form.statusRequired", "Status is required"),
               }}
               render={({ field }) => (
-                <FormSelect
-                  id="isActive"
-                  value={
-                    field.value
-                      ? { value: true, label: "Active" }
-                      : { value: false, label: "Inactive" }
-                  }
-                  onChange={(option) => {
-                    if (option && "value" in option) {
-                      field.onChange(option.value);
-                    }
-                  }}
-                  options={[
-                    { value: true, label: "Active" },
-                    { value: false, label: "Inactive" },
-                  ]}
-                  isDisabled={isPending}
-                />
+                <Select
+                  value={field.value ? "true" : "false"}
+                  onValueChange={(value) => field.onChange(value === "true")}
+                  disabled={isPending}
+                >
+                  <SelectTrigger id="isActive">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="true">Active</SelectItem>
+                    <SelectItem value="false">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
               )}
             />
             {errors.isActive && (

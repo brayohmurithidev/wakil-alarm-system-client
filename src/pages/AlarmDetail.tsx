@@ -1,4 +1,4 @@
-import { Edit2, Loader2, UserPlus } from "lucide-react";
+import { Edit2, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
@@ -11,14 +11,24 @@ import { AlarmMap } from "@/components/AlarmMap";
 import { AlarmStatusBadge } from "@/components/AlarmStatusBadge";
 import { notify } from "@/components/Alert/notify";
 import {
-  CloseCaseDialog,
   type CloseCaseData,
+  CloseCaseDialog,
 } from "@/components/CloseCaseDialog";
-import { FormSelect } from "@/components/FormGroup/FormGroup";
 import { AlarmIcon } from "@/components/icons/AlarmIcon";
 import { Loading } from "@/components/Loading";
 import { PageHeader } from "@/components/PageHeader";
 import { Body, Button, Heading } from "@/components/ui";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/Select";
+
+// Radix Select rejects an empty-string item value, so unassigning a guard
+// needs an explicit sentinel item rather than a clearable empty state.
+const UNASSIGNED_GUARD = "__unassigned__";
 
 export function AlarmDetail() {
   const { t } = useTranslation();
@@ -381,45 +391,38 @@ export function AlarmDetail() {
                   </Body>
                   <div className="flex items-center gap-2">
                     <div className="flex-1">
-                      <FormSelect
-                        value={
-                          alarm.guardId && guards
-                            ? guards
-                                .filter((g) => g.id === alarm.guardId)
-                                .map((g) => ({
-                                  value: g.id,
-                                  label: g.name,
-                                }))[0] || null
-                            : null
-                        }
-                        onChange={(option) => {
-                          if (option && "value" in option) {
-                            setIsUpdatingGuard(true);
-                            updateAlarm({ id: id!, guardId: option.value });
-                          } else if (option === null) {
-                            setIsUpdatingGuard(true);
-                            updateAlarm({ id: id!, guardId: null as any });
-                          }
+                      <Select
+                        value={alarm.guardId ?? UNASSIGNED_GUARD}
+                        onValueChange={(value) => {
+                          setIsUpdatingGuard(true);
+                          updateAlarm({
+                            id: id!,
+                            guardId:
+                              value === UNASSIGNED_GUARD
+                                ? (null as any)
+                                : value,
+                          });
                         }}
-                        options={
-                          guards?.map((guard) => ({
-                            value: guard.id,
-                            label: guard.name,
-                          })) || []
-                        }
-                        placeholder={
-                          <div className="flex items-center gap-2">
-                            <UserPlus className="h-4 w-4" />
-                            {t("alarms.assignGuard", "Assign Guard")}
-                          </div>
-                        }
-                        isDisabled={
+                        disabled={
                           isUpdatingGuard ||
                           alarm.status === "closed" ||
                           alarm.status === "cancelled"
                         }
-                        isClearable
-                      />
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={UNASSIGNED_GUARD}>
+                            {t("alarmDetail.unassigned", "Unassigned")}
+                          </SelectItem>
+                          {guards?.map((guard) => (
+                            <SelectItem key={guard.id} value={guard.id}>
+                              {guard.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     {isUpdatingGuard && (
                       <Loader2 className="h-4 w-4 animate-spin text-muted-foreground shrink-0" />

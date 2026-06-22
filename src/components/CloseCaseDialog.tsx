@@ -9,7 +9,6 @@ import wakilLogo from "@/assets/wakil-gold.png";
 import {
   FormInput,
   FormLabel,
-  FormSelect,
   FormTextarea,
 } from "@/components/FormGroup/FormGroup";
 import { Body, Button, Heading } from "@/components/ui";
@@ -20,6 +19,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/Dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/Select";
 
 type CloseCaseDialogProps = {
   alarm: Alarm;
@@ -326,32 +332,24 @@ export function CloseCaseDialog({
                 control={control}
                 defaultValue=""
                 render={({ field }) => (
-                  <FormSelect
-                    value={
-                      field.value
-                        ? {
-                            value: field.value,
-                            label:
-                              field.value === "called_answered"
-                                ? "Called - Answered"
-                                : field.value === "called_no_answer"
-                                  ? "Called - No Answer"
-                                  : "Not Called",
-                          }
-                        : null
-                    }
-                    onChange={(option) => field.onChange(option?.value || "")}
-                    options={[
-                      { value: "called_answered", label: "Called - Answered" },
-                      {
-                        value: "called_no_answer",
-                        label: "Called - No Answer",
-                      },
-                      { value: "not_called", label: "Not Called" },
-                    ]}
-                    placeholder="Select call status"
-                    isDisabled={isViewMode}
-                  />
+                  <Select
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    disabled={isViewMode}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select call status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="called_answered">
+                        Called - Answered
+                      </SelectItem>
+                      <SelectItem value="called_no_answer">
+                        Called - No Answer
+                      </SelectItem>
+                      <SelectItem value="not_called">Not Called</SelectItem>
+                    </SelectContent>
+                  </Select>
                 )}
               />
               {errors.callLog && (
@@ -370,29 +368,22 @@ export function CloseCaseDialog({
                 control={control}
                 defaultValue=""
                 render={({ field }) => (
-                  <FormSelect
-                    value={
-                      field.value
-                        ? {
-                            value: field.value,
-                            label:
-                              field.value === "sms_sent"
-                                ? "SMS sent"
-                                : field.value === "whatsapp_sent"
-                                  ? "WhatsApp sent"
-                                  : "No sent",
-                          }
-                        : null
-                    }
-                    onChange={(option) => field.onChange(option?.value || "")}
-                    options={[
-                      { value: "sms_sent", label: "SMS sent" },
-                      { value: "whatsapp_sent", label: "WhatsApp sent" },
-                      { value: "no_sent", label: "No sent" },
-                    ]}
-                    placeholder="Select communication type"
-                    isDisabled={isViewMode}
-                  />
+                  <Select
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    disabled={isViewMode}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select communication type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="sms_sent">SMS sent</SelectItem>
+                      <SelectItem value="whatsapp_sent">
+                        WhatsApp sent
+                      </SelectItem>
+                      <SelectItem value="no_sent">No sent</SelectItem>
+                    </SelectContent>
+                  </Select>
                 )}
               />
               {errors.communicationType && (
@@ -444,38 +435,25 @@ export function CloseCaseDialog({
                 control={control}
                 defaultValue=""
                 render={({ field }) => (
-                  <FormSelect
-                    value={
-                      field.value
-                        ? {
-                            value: field.value,
-                            label:
-                              field.value === "resolved_remotely"
-                                ? "Resolved Remotely"
-                                : field.value === "physical_response"
-                                  ? "Physical Response Completed"
-                                  : field.value === "false_alarm"
-                                    ? "False Alarm"
-                                    : "Escalated",
-                          }
-                        : null
-                    }
-                    onChange={(option) => field.onChange(option?.value || "")}
-                    options={[
-                      {
-                        value: "resolved_remotely",
-                        label: "Resolved Remotely",
-                      },
-                      {
-                        value: "physical_response",
-                        label: "Physical Response Completed",
-                      },
-                      { value: "false_alarm", label: "False Alarm" },
-                      { value: "escalated", label: "Escalated" },
-                    ]}
-                    placeholder="Select outcome"
-                    isDisabled={isViewMode}
-                  />
+                  <Select
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    disabled={isViewMode}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select outcome" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="resolved_remotely">
+                        Resolved Remotely
+                      </SelectItem>
+                      <SelectItem value="physical_response">
+                        Physical Response Completed
+                      </SelectItem>
+                      <SelectItem value="false_alarm">False Alarm</SelectItem>
+                      <SelectItem value="escalated">Escalated</SelectItem>
+                    </SelectContent>
+                  </Select>
                 )}
               />
               {errors.outcome && (

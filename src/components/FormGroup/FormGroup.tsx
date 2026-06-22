@@ -1,78 +1,11 @@
 import clsx from "clsx";
 import { forwardRef } from "react";
-import Select, { type Props as SelectProps } from "react-select";
 
 import { Alert, type AlertProps } from "../Alert/Alert";
 
 type FormLabelProps = React.HTMLProps<HTMLLabelElement> & {
   isOptional?: boolean;
   className?: string;
-};
-
-const formSelectStyles = {
-  control: (provided: any, state: any) => ({
-    ...provided,
-    backgroundColor: "#1f2937",
-    paddingTop: 0,
-    paddingBottom: 0,
-    borderRadius: 4,
-    borderColor: state.isFocused ? "#ffffff" : "#ffffff",
-    boxShadow: "none",
-    cursor: "pointer",
-    ":hover": {
-      borderColor: state.isFocused ? "#D1CCE6" : "#D1CCE6",
-    },
-    fontSize: 12,
-  }),
-  menu: (provided: any) => ({
-    ...provided,
-    backgroundColor: "#1f2937",
-    border: "1px solid #374151",
-  }),
-  menuList: (provided: any) => ({
-    ...provided,
-    backgroundColor: "#1f2937",
-    padding: 0,
-  }),
-  singleValue: (provided: any) => ({
-    ...provided,
-    fontSize: 14,
-    color: "#ffffff",
-    fontWeight: 500,
-  }),
-  input: (provided: any) => ({
-    ...provided,
-    fontSize: 14,
-    color: "#ffffff",
-  }),
-  valueContainer: (provided: any) => ({
-    ...provided,
-    fontSize: 14,
-  }),
-  placeholder: (provided: any) => ({
-    ...provided,
-    fontSize: 14,
-    color: "#ffffff",
-  }),
-  option: (provided: any, state: any) => ({
-    ...provided,
-    fontSize: 14,
-    backgroundColor: state.isSelected
-      ? "#111827"
-      : state.isFocused
-        ? "#1f2937"
-        : "#1f2937",
-    color: state.isSelected ? "#ffffff" : "#ffffff",
-    fontWeight: state.isSelected ? 600 : 400,
-    cursor: "pointer",
-    ":hover": state.isSelected
-      ? {
-          backgroundColor: "#111827",
-        }
-      : {
-          backgroundColor: "#111827",
-        },
-  }),
 };
 
 export const FormLabel: React.FC<FormLabelProps> = ({
@@ -150,18 +83,6 @@ export const FormError = (props: AlertProps) =>
       {...props}
     />
   ) : null;
-
-export const FormSelect = <Option, IsMulti extends boolean = false>(
-  props: SelectProps<Option, IsMulti>,
-) => {
-  return (
-    <Select
-      classNamePrefix="form-select"
-      styles={formSelectStyles}
-      {...props}
-    />
-  );
-};
 
 type FormGroupProps = React.HTMLAttributes<HTMLDivElement> & {
   className?: string;
