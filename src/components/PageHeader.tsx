@@ -1,16 +1,18 @@
 import type { ReactNode } from "react";
 
 import { Heading } from "@/components/ui";
+import { cn } from "@/lib/utils";
 
 type PageHeaderProps = {
   title: string;
   icon?: ReactNode;
   actions?: ReactNode;
+  className?: string;
 };
 
-export function PageHeader({ title, icon, actions }: PageHeaderProps) {
+export function PageHeader({ title, icon, actions, className }: PageHeaderProps) {
   return (
-    <header className="p-4 sm:p-8">
+    <header className={cn("py-4 sm:py-8", className)}>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2 text-white">
           {icon}

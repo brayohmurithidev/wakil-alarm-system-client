@@ -35,6 +35,7 @@ export function Dashboard() {
       <PageHeader
         title={t("dashboard.title")}
         icon={<DashboardIcon size={30} />}
+        className="px-4 sm:px-8"
       />
       <div className="flex-1 overflow-hidden">
         <div className="flex flex-col lg:flex-row h-full bg-card">

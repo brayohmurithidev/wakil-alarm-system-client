@@ -60,7 +60,7 @@ export function Users() {
   if (isGetUsersError) return null;
 
   return (
-    <div className="w-full max-w-7xl mx-auto">
+    <div className="w-full max-w-7xl mx-auto px-4 pb-8 sm:px-8">
       <PageHeader
         title={t("users.title", "Users")}
         icon={<UsersIcon size={30} />}

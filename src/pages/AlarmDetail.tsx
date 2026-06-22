@@ -106,6 +106,7 @@ export function AlarmDetail() {
         <PageHeader
           title={t("alarmDetail.title", "Alarm Details")}
           icon={<AlarmIcon size={30} />}
+          className="px-4 sm:px-8"
         />
         <div className="flex-1 flex items-center justify-center">
           <Loading />
@@ -120,6 +121,7 @@ export function AlarmDetail() {
         <PageHeader
           title={t("alarmDetail.title", "Alarm Details")}
           icon={<AlarmIcon size={30} />}
+          className="px-4 sm:px-8"
         />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
@@ -140,6 +142,7 @@ export function AlarmDetail() {
       <PageHeader
         title={t("alarmDetail.title", "Alarm Details")}
         icon={<AlarmIcon size={30} />}
+        className="px-4 sm:px-8"
       />
 
       <div className="flex-1 overflow-auto p-6">

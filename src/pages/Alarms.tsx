@@ -51,7 +51,7 @@ export function Alarms() {
   if (iseGetAlarmsError) return null;
 
   return (
-    <div className="w-full max-w-7xl mx-auto">
+    <div className="w-full max-w-7xl mx-auto px-4 pb-8 sm:px-8">
       <PageHeader title={t("alarms.title")} icon={<AlarmIcon size={30} />} />
       {alarms && alarms.length > 0 && (
         <div className="bg-card rounded-lg shadow-md overflow-hidden">
