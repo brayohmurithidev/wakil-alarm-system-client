@@ -18,6 +18,7 @@ export type CreateAlarmReportParams = {
     | "escalated";
   whatHappened: string;
   learningIdentified?: boolean;
+  videoRecordingId?: string;
 };
 
 export type CreateAlarmReportResponse = {
@@ -32,6 +33,7 @@ export type CreateAlarmReportResponse = {
     outcome: string;
     whatHappened: string;
     learningIdentified: boolean;
+    videoRecordingId: string | null;
     createdAt: string;
     createdById: string;
   };

@@ -123,6 +123,14 @@ export const AlarmNotificationProvider: React.FC<{
       },
     );
 
+    socket.on("guard:location-updated", () => {
+      queryClient.invalidateQueries({ queryKey: [queryKeys.guards] });
+    });
+
+    socket.on("guard:presence", () => {
+      queryClient.invalidateQueries({ queryKey: [queryKeys.guards] });
+    });
+
     return () => {
       socket.disconnect();
     };

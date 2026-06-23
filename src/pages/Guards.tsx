@@ -1,13 +1,24 @@
-import { KeyRound, Plus, Search, ShieldUser, Trash2, X } from "lucide-react";
+import {
+  KeyRound,
+  Pencil,
+  Plus,
+  RotateCcw,
+  Search,
+  ShieldUser,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useDeleteGuard } from "@/api/hooks/useDeleteGuard";
 import { useGetGuards } from "@/api/hooks/useGetGuards";
 import { useResendGuardOtp } from "@/api/hooks/useResendGuardOtp";
+import { useUpdateGuard } from "@/api/hooks/useUpdateGuard";
 import type { Guard } from "@/api/types";
 import { notify } from "@/components/Alert/notify";
 import { CreateGuardDialog } from "@/components/CreateGuardDialog";
+import { EditGuardDialog } from "@/components/EditGuardDialog";
 import { GuardStatusBadge } from "@/components/GuardStatusBadge";
 import { PageHeader } from "@/components/PageHeader";
 import { Body, Button, Input } from "@/components/ui";
@@ -42,6 +53,11 @@ export function Guards() {
     id: string;
     name: string;
   } | null>(null);
+  const [editTarget, setEditTarget] = useState<Guard | null>(null);
+  const [reactivateTarget, setReactivateTarget] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
   const { data: guards, isLoading } = useGetGuards();
 
@@ -58,6 +74,7 @@ export function Guards() {
   const { mutate: deleteGuard, isPending: isDeleting } = useDeleteGuard();
   const { mutate: resendGuardOtp, isPending: isResending } =
     useResendGuardOtp();
+  const { mutate: updateGuard, isPending: isReactivating } = useUpdateGuard();
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString();
@@ -84,6 +101,26 @@ export function Guards() {
         );
       },
     });
+  };
+
+  const handleReactivate = () => {
+    if (!reactivateTarget) return;
+    updateGuard(
+      { id: reactivateTarget.id, isActive: true },
+      {
+        onSuccess: (response) => {
+          notify(response.message, { type: "success" });
+          setReactivateTarget(null);
+        },
+        onError: (error: any) => {
+          notify(
+            error?.response?.data?.error ||
+              t("guards.reactivateError", "Failed to reactivate guard"),
+            { type: "error" },
+          );
+        },
+      },
+    );
   };
 
   const handleResendOtp = () => {
@@ -209,28 +246,49 @@ export function Guards() {
                       <Body size="sm">{formatDate(guard.createdAt)}</Body>
                     </TableCell>
                     <TableCell className="px-6 py-4 text-right">
-                      {guard.isActive && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setEditTarget(guard)}
+                        className="border-transparent text-muted-foreground hover:text-foreground hover:bg-muted mr-2"
+                        title={t("guards.edit", "Edit guard")}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      {guard.isActive ? (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              setResendOtpTarget({ id: guard.id, name: guard.name })
+                            }
+                            className="border-transparent text-muted-foreground hover:text-foreground hover:bg-muted mr-2"
+                            title={t("guards.resendOtp", "Resend login code")}
+                          >
+                            <KeyRound className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setDeleteTarget({ id: guard.id, name: guard.name })}
+                            className="border-transparent text-muted-foreground hover:text-destructive hover:bg-destructive/10 hover:border-destructive/20"
+                            title={t("guards.deactivate", "Deactivate guard")}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </>
+                      ) : (
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() =>
-                            setResendOtpTarget({ id: guard.id, name: guard.name })
+                            setReactivateTarget({ id: guard.id, name: guard.name })
                           }
-                          className="border-transparent text-muted-foreground hover:text-foreground hover:bg-muted mr-2"
-                          title={t("guards.resendOtp", "Resend login code")}
+                          className="border-transparent text-muted-foreground hover:text-foreground hover:bg-muted"
+                          title={t("guards.reactivate", "Reactivate guard")}
                         >
-                          <KeyRound className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {guard.isActive && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setDeleteTarget({ id: guard.id, name: guard.name })}
-                          className="border-transparent text-muted-foreground hover:text-destructive hover:bg-destructive/10 hover:border-destructive/20"
-                          title={t("guards.deactivate", "Deactivate guard")}
-                        >
-                          <Trash2 className="h-4 w-4" />
+                          <RotateCcw className="h-4 w-4" />
                         </Button>
                       )}
                     </TableCell>
@@ -262,6 +320,44 @@ export function Guards() {
         open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
       />
+
+      <EditGuardDialog
+        guard={editTarget}
+        onOpenChange={(open) => !open && setEditTarget(null)}
+      />
+
+      <Dialog
+        open={!!reactivateTarget}
+        onOpenChange={() => !isReactivating && setReactivateTarget(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-xl text-gray-200">
+              {t("guards.reactivateTitle", "Reactivate Guard")}
+            </DialogTitle>
+          </DialogHeader>
+          <Body>
+            {t(
+              "guards.reactivateConfirm",
+              `Reactivate "${reactivateTarget?.name}"? They'll be able to log in and be assigned to dispatches again.`,
+            )}
+          </Body>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setReactivateTarget(null)}
+              disabled={isReactivating}
+            >
+              {t("common.cancel", "Cancel")}
+            </Button>
+            <Button onClick={handleReactivate} disabled={isReactivating}>
+              {isReactivating
+                ? t("guards.reactivating", "Reactivating...")
+                : t("guards.reactivate", "Reactivate")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!deleteTarget} onOpenChange={() => !isDeleting && setDeleteTarget(null)}>
         <DialogContent>

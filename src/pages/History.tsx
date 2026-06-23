@@ -21,6 +21,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/Select";
+import { formatDistanceKm, haversineKm } from "@/lib/distance";
+import { getActiveGuardAssignments } from "@/lib/guardAssignment";
 
 // Radix Select rejects an empty-string item value, so unassigning a guard
 // needs an explicit sentinel item rather than a clearable empty state.
@@ -39,6 +41,7 @@ export function History() {
     error: iseGetAlarmsError,
   } = useGetAlarms();
   const { data: guards } = useGetGuards();
+  const guardAssignments = getActiveGuardAssignments(alarms ?? []);
   const [updatingAlarmId, setUpdatingAlarmId] = useState<string | null>(null);
 
   const { register, watch } = useForm<SearchFormData>({
@@ -198,11 +201,43 @@ export function History() {
                               <SelectItem value={UNASSIGNED_GUARD}>
                                 {t("alarmDetail.unassigned", "Unassigned")}
                               </SelectItem>
-                              {guards?.map((guard) => (
-                                <SelectItem key={guard.id} value={guard.id}>
-                                  {guard.name}
-                                </SelectItem>
-                              ))}
+                              {(guards ?? [])
+                                .map((guard) => ({
+                                  guard,
+                                  distanceKm:
+                                    guard.currentLatitude != null &&
+                                    guard.currentLongitude != null
+                                      ? haversineKm(alarm, {
+                                          latitude: guard.currentLatitude,
+                                          longitude: guard.currentLongitude,
+                                        })
+                                      : null,
+                                }))
+                                .sort(
+                                  (a, b) =>
+                                    (a.distanceKm ?? Infinity) -
+                                    (b.distanceKm ?? Infinity),
+                                )
+                                .map(({ guard, distanceKm }) => {
+                                  const assignedAlarmId = guardAssignments.get(
+                                    guard.id,
+                                  );
+                                  const isAssignedElsewhere =
+                                    assignedAlarmId != null &&
+                                    assignedAlarmId !== alarm.id;
+                                  return (
+                                    <SelectItem
+                                      key={guard.id}
+                                      value={guard.id}
+                                      disabled={isAssignedElsewhere}
+                                    >
+                                      {guard.name}
+                                      {distanceKm != null &&
+                                        ` — ${formatDistanceKm(distanceKm)}`}
+                                      {isAssignedElsewhere && " (Assigned)"}
+                                    </SelectItem>
+                                  );
+                                })}
                             </SelectContent>
                           </Select>
                         </div>

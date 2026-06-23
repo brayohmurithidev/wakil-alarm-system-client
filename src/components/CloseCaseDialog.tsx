@@ -1,7 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { useTranslation } from "react-i18next";
 import { z } from "zod";
 
 import type { Alarm, AlarmReport } from "@/api/types";
@@ -11,6 +10,7 @@ import {
   FormLabel,
   FormTextarea,
 } from "@/components/FormGroup/FormGroup";
+import { GuardIncidentReportCard } from "@/components/GuardIncidentReportCard";
 import { Body, Button, Heading } from "@/components/ui";
 import {
   Dialog,
@@ -77,8 +77,6 @@ const closeCaseSchema = z.object({
     .min(10, "Please provide at least 10 characters"),
   learningIdentified: z.boolean().default(false),
   videoRecordingId: z.string().optional(),
-  customerContacted: z.boolean().default(false),
-  customerContactedAt: z.string().optional(),
 });
 
 export type CloseCaseData = z.infer<typeof closeCaseSchema>;
@@ -92,7 +90,6 @@ export function CloseCaseDialog({
   mode = "create",
   initialData = null,
 }: CloseCaseDialogProps) {
-  const { t } = useTranslation();
   const isViewMode = mode === "view";
 
   const {
@@ -112,8 +109,6 @@ export function CloseCaseDialog({
       whatHappened: "",
       learningIdentified: false,
       videoRecordingId: "",
-      customerContacted: false,
-      customerContactedAt: undefined,
     },
   });
 
@@ -131,8 +126,6 @@ export function CloseCaseDialog({
         whatHappened: initialData.whatHappened,
         learningIdentified: initialData.learningIdentified,
         videoRecordingId: initialData.videoRecordingId || "",
-        customerContacted: false,
-        customerContactedAt: undefined,
       });
     }
   }, [open, reset, isViewMode, initialData]);
@@ -167,7 +160,7 @@ export function CloseCaseDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-400! sm:max-w-400! md:max-w-400! lg:max-w-400! max-h-[90vh] w-[95vw] overflow-y-auto">
-        <DialogHeader className="text-white d">
+        <DialogHeader className="text-white">
           <DialogTitle className="flex items-center gap-3">
             <img src={wakilLogo} alt="Wakil" className="size-16 w-auto" />
           </DialogTitle>
@@ -317,6 +310,19 @@ export function CloseCaseDialog({
               </div>
             </div>
           </div>
+
+          {alarm.guardIncidentReports && alarm.guardIncidentReports.length > 0 && (
+            <div className="space-y-8">
+              <Heading size="xl" className="border-b pb-2">
+                B2. Guard&apos;s Field Report
+              </Heading>
+              <div className="space-y-4">
+                {alarm.guardIncidentReports.map((report) => (
+                  <GuardIncidentReportCard key={report.id} report={report} />
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="space-y-8">
             <Heading size="xl" className="border-b pb-2">
@@ -492,6 +498,23 @@ export function CloseCaseDialog({
                 {...register("videoRecordingId")}
                 disabled={isViewMode}
               />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input
+                id="learningIdentified"
+                type="checkbox"
+                className="h-4 w-4 accent-primary"
+                {...register("learningIdentified")}
+                disabled={isViewMode}
+              />
+              <label
+                htmlFor="learningIdentified"
+                className="text-white text-sm font-semibold"
+              >
+                A learning or process improvement was identified from this
+                incident
+              </label>
             </div>
           </div>
         </form>

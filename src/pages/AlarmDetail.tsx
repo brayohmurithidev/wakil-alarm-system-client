@@ -5,6 +5,7 @@ import { useNavigate, useParams } from "react-router-dom";
 
 import { useCreateAlarmReport } from "@/api/hooks/useCreateAlarmReport";
 import { useGetAlarm } from "@/api/hooks/useGetAlarm";
+import { useGetAlarms } from "@/api/hooks/useGetAlarms";
 import { useGetGuards } from "@/api/hooks/useGetGuards";
 import { useUpdateAlarm } from "@/api/hooks/useUpdateAlarm";
 import { AlarmMap } from "@/components/AlarmMap";
@@ -14,6 +15,7 @@ import {
   type CloseCaseData,
   CloseCaseDialog,
 } from "@/components/CloseCaseDialog";
+import { GuardIncidentReportCard } from "@/components/GuardIncidentReportCard";
 import { AlarmIcon } from "@/components/icons/AlarmIcon";
 import { Loading } from "@/components/Loading";
 import { PageHeader } from "@/components/PageHeader";
@@ -25,6 +27,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/Select";
+import { formatDistanceKm, haversineKm } from "@/lib/distance";
+import { getActiveGuardAssignments } from "@/lib/guardAssignment";
 
 // Radix Select rejects an empty-string item value, so unassigning a guard
 // needs an explicit sentinel item rather than a clearable empty state.
@@ -35,7 +39,9 @@ export function AlarmDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data: alarm, isLoading, error } = useGetAlarm(id || "");
+  const { data: alarms } = useGetAlarms();
   const { data: guards } = useGetGuards();
+  const guardAssignments = getActiveGuardAssignments(alarms ?? []);
   const [isUpdatingGuard, setIsUpdatingGuard] = useState(false);
   const [isCloseCaseDialogOpen, setIsCloseCaseDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<"create" | "view">("create");
@@ -103,6 +109,7 @@ export function AlarmDetail() {
         | "escalated",
       whatHappened: data.whatHappened,
       learningIdentified: data.learningIdentified,
+      videoRecordingId: data.videoRecordingId || undefined,
     });
   };
 
@@ -438,11 +445,43 @@ export function AlarmDetail() {
                           <SelectItem value={UNASSIGNED_GUARD}>
                             {t("alarmDetail.unassigned", "Unassigned")}
                           </SelectItem>
-                          {guards?.map((guard) => (
-                            <SelectItem key={guard.id} value={guard.id}>
-                              {guard.name}
-                            </SelectItem>
-                          ))}
+                          {(guards ?? [])
+                            .map((guard) => ({
+                              guard,
+                              distanceKm:
+                                guard.currentLatitude != null &&
+                                guard.currentLongitude != null
+                                  ? haversineKm(alarm, {
+                                      latitude: guard.currentLatitude,
+                                      longitude: guard.currentLongitude,
+                                    })
+                                  : null,
+                            }))
+                            .sort(
+                              (a, b) =>
+                                (a.distanceKm ?? Infinity) -
+                                (b.distanceKm ?? Infinity),
+                            )
+                            .map(({ guard, distanceKm }) => {
+                              const assignedAlarmId = guardAssignments.get(
+                                guard.id,
+                              );
+                              const isAssignedElsewhere =
+                                assignedAlarmId != null &&
+                                assignedAlarmId !== alarm.id;
+                              return (
+                                <SelectItem
+                                  key={guard.id}
+                                  value={guard.id}
+                                  disabled={isAssignedElsewhere}
+                                >
+                                  {guard.name}
+                                  {distanceKm != null &&
+                                    ` — ${formatDistanceKm(distanceKm)}`}
+                                  {isAssignedElsewhere && " (Assigned)"}
+                                </SelectItem>
+                              );
+                            })}
                         </SelectContent>
                       </Select>
                     </div>
@@ -451,6 +490,36 @@ export function AlarmDetail() {
                     )}
                   </div>
                 </div>
+
+                {(alarm.guardId ||
+                  (alarm.guardIncidentReports?.length ?? 0) > 0) && (
+                  <div className="pt-4 border-t border-border">
+                    <Body
+                      size="sm"
+                      className="text-muted-foreground mb-2 font-medium"
+                    >
+                      {t("alarmDetail.guardReport", "Guard Incident Report")}
+                    </Body>
+                    {alarm.guardIncidentReports &&
+                    alarm.guardIncidentReports.length > 0 ? (
+                      <div className="space-y-4">
+                        {alarm.guardIncidentReports.map((report) => (
+                          <GuardIncidentReportCard
+                            key={report.id}
+                            report={report}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <Body size="sm" className="text-muted-foreground">
+                        {t(
+                          "alarmDetail.noGuardReport",
+                          "Guard hasn't submitted a report yet",
+                        )}
+                      </Body>
+                    )}
+                  </div>
+                )}
 
                 <div className="pt-4 border-t border-border">
                   {(alarm.status === "open" ||
@@ -526,7 +595,12 @@ export function AlarmDetail() {
               {t("alarmDetail.map", "Map")}
             </Heading>
             <div className="h-96 rounded-lg overflow-hidden">
-              <AlarmMap alarms={[alarm]} focusedAlarmId={alarm.id} />
+              <AlarmMap
+                alarms={[alarm]}
+                guards={guards}
+                selectedGuardId={alarm.guardId}
+                focusedAlarmId={alarm.id}
+              />
             </div>
           </div>
         </div>

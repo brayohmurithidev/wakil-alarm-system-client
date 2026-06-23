@@ -8,7 +8,7 @@ import { useEffect } from "react";
 import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
 
 import type { TrackerLocation } from "@/api/hooks/useGetTrackerLocation";
-import type { Alarm, AlarmStatus } from "@/api/types";
+import type { Alarm, AlarmStatus, Guard, GuardStatus } from "@/api/types";
 
 const DefaultIcon = L.icon({
   iconUrl: icon,
@@ -79,37 +79,89 @@ const getTrackerIcon = () => {
   });
 };
 
+const GUARD_STATUS_COLOR: Record<GuardStatus, string> = {
+  available: "#22c55e",
+  busy: "#fbd63d",
+  offline: "#6b7280",
+};
+
+const getGuardIcon = (status: GuardStatus, selected = false) => {
+  const color = GUARD_STATUS_COLOR[status];
+  const size = selected ? 46 : 34;
+  const anchor = size / 2;
+
+  return L.divIcon({
+    className: "custom-marker",
+    html: `
+      <div style="
+        position: relative;
+        width: ${size}px;
+        height: ${size}px;
+      ">
+        <svg width="${size}" height="${size}" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          ${selected ? `<circle cx="12" cy="12" r="11.25" fill="none" stroke="#fbd63d" stroke-width="1.5"/>` : ""}
+          <circle cx="12" cy="12" r="10" fill="${color}" stroke="white" stroke-width="1.5"/>
+          <path d="M12 11a3 3 0 100-6 3 3 0 000 6zm-5 6a5 5 0 0110 0H7z" fill="white"/>
+        </svg>
+      </div>
+    `,
+    iconSize: [size, size],
+    iconAnchor: [anchor, anchor],
+    popupAnchor: [0, -anchor],
+  });
+};
+
 type AlarmMapProps = {
   alarms: Alarm[];
   trackers?: TrackerLocation[];
+  guards?: Guard[];
+  selectedGuardId?: string | null;
   focusedAlarmId?: string | null;
 };
 
 // Component to handle map focus/zoom
 function MapFocusHandler({
   alarms,
+  guards,
+  selectedGuardId,
   focusedAlarmId,
 }: {
   alarms: Alarm[];
+  guards?: Guard[];
+  selectedGuardId?: string | null;
   focusedAlarmId?: string | null;
 }) {
   const map = useMap();
 
   useEffect(() => {
-    if (focusedAlarmId) {
-      const alarm = alarms.find((a) => a.id === focusedAlarmId);
-      if (alarm) {
-        map.flyTo([alarm.latitude, alarm.longitude], 16, {
-          duration: 1.5,
-        });
-      }
+    if (!focusedAlarmId) return;
+    const alarm = alarms.find((a) => a.id === focusedAlarmId);
+    if (!alarm) return;
+
+    const selectedGuard = guards?.find(
+      (g) =>
+        g.id === selectedGuardId &&
+        g.currentLatitude != null &&
+        g.currentLongitude != null,
+    );
+
+    if (selectedGuard) {
+      const bounds = L.latLngBounds(
+        [alarm.latitude, alarm.longitude],
+        [selectedGuard.currentLatitude as number, selectedGuard.currentLongitude as number],
+      );
+      map.flyToBounds(bounds, { padding: [60, 60], maxZoom: 16, duration: 1.5 });
+    } else {
+      map.flyTo([alarm.latitude, alarm.longitude], 16, {
+        duration: 1.5,
+      });
     }
-  }, [focusedAlarmId, alarms, map]);
+  }, [focusedAlarmId, alarms, guards, selectedGuardId, map]);
 
   return null;
 }
 
-export function AlarmMap({ alarms, trackers, focusedAlarmId }: AlarmMapProps) {
+export function AlarmMap({ alarms, trackers, guards, selectedGuardId, focusedAlarmId }: AlarmMapProps) {
   const defaultCenter: [number, number] = [-1.2921, 36.8219];
 
   const center: [number, number] =
@@ -127,7 +179,12 @@ export function AlarmMap({ alarms, trackers, focusedAlarmId }: AlarmMapProps) {
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      <MapFocusHandler alarms={alarms} focusedAlarmId={focusedAlarmId} />
+      <MapFocusHandler
+        alarms={alarms}
+        guards={guards}
+        selectedGuardId={selectedGuardId}
+        focusedAlarmId={focusedAlarmId}
+      />
       {alarms.map((alarm) => (
         <Marker
           key={alarm.id}
@@ -174,6 +231,44 @@ export function AlarmMap({ alarms, trackers, focusedAlarmId }: AlarmMapProps) {
           </Popup>
         </Marker>
       ))}
+      {guards
+        ?.filter(
+          (guard): guard is Guard & { currentLatitude: number; currentLongitude: number } =>
+            guard.currentLatitude != null && guard.currentLongitude != null,
+        )
+        .map((guard) => {
+          const isSelected = guard.id === selectedGuardId;
+          return (
+            <Marker
+              key={guard.id}
+              position={[guard.currentLatitude, guard.currentLongitude]}
+              icon={getGuardIcon(guard.status, isSelected)}
+              zIndexOffset={isSelected ? 1000 : 0}
+            >
+              <Popup>
+                <div className="p-2">
+                  {isSelected && (
+                    <p className="text-xs font-bold mb-1" style={{ color: "#fbd63d" }}>
+                      ASSIGNED GUARD
+                    </p>
+                  )}
+                  <h3 className="font-bold text-lg">{guard.name}</h3>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Status:
+                    <span className="font-semibold" style={{ color: GUARD_STATUS_COLOR[guard.status] }}>
+                      {" "}{guard.status}
+                    </span>
+                  </p>
+                  {guard.locationUpdatedAt && (
+                    <p className="text-xs text-gray-400 mt-1">
+                      Updated {new Date(guard.locationUpdatedAt).toLocaleString()}
+                    </p>
+                  )}
+                </div>
+              </Popup>
+            </Marker>
+          );
+        })}
     </MapContainer>
   );
 }

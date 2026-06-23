@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useGetAlarms } from "@/api/hooks/useGetAlarms";
+import { useGetGuards } from "@/api/hooks/useGetGuards";
 import { useGetTrackerLocation } from "@/api/hooks/useGetTrackerLocation";
 import { AlarmList } from "@/components/AlarmList";
 import { AlarmMap } from "@/components/AlarmMap";
@@ -14,6 +15,7 @@ export function Dashboard() {
   const { t } = useTranslation();
   const { data: alarms, isLoading, error } = useGetAlarms();
   const { data: trackers } = useGetTrackerLocation();
+  const { data: guards } = useGetGuards();
   const [focusedAlarmId, setFocusedAlarmId] = useState<string | null>(null);
 
   const activeAlarms = useMemo(() => {
@@ -41,7 +43,7 @@ export function Dashboard() {
         <div className="flex flex-col lg:flex-row h-full bg-card">
           <div className="flex-3 rounded-lg shadow-md p-2 flex flex-col">
             <div className="flex-1 min-h-0">
-              <AlarmMap alarms={activeAlarms} trackers={trackers} focusedAlarmId={focusedAlarmId} />
+              <AlarmMap alarms={activeAlarms} trackers={trackers} guards={guards} focusedAlarmId={focusedAlarmId} />
             </div>
           </div>
           <div className="flex-1 rounded-lg shadow-md p-6 flex flex-col">

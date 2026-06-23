@@ -44,6 +44,9 @@ export type Guard = {
   avatarUrl: string | null;
   status: GuardStatus;
   lastActiveAt: string | null;
+  currentLatitude: number | null;
+  currentLongitude: number | null;
+  locationUpdatedAt: string | null;
   hasPushToken: boolean;
   createdAt: string;
   updatedAt: string;
@@ -64,6 +67,24 @@ export type AlarmReport = {
   createdAt: string;
   createdById: string;
   createdBy?: AdminUser;
+};
+
+export type ReportStatus = "draft" | "submitted";
+
+export type GuardIncidentReport = {
+  id: string;
+  alarmId: string;
+  guardId: string;
+  guard?: Guard;
+  incidentType: string;
+  outcome: string | null;
+  description: string | null;
+  photoUrls: string[];
+  signatureUrl: string | null;
+  status: ReportStatus;
+  submittedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type Alarm = {
@@ -92,6 +113,7 @@ export type Alarm = {
   guardAcknowledgedAt?: string | null;
   guardArrivedAt?: string | null;
   report?: AlarmReport | null;
+  guardIncidentReports?: GuardIncidentReport[];
 };
 
 export type AlarmsResponse = {
