@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 
 import type { AdminUser } from "@/api/types";
-import axiosInstance from "@/lib/axios";
+import axiosInstance, { registerUnauthorizedHandler } from "@/lib/axios";
 
 type AuthContextType = {
   adminUser: AdminUser | null;
@@ -19,14 +19,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const storedAdminUser = localStorage.getItem("adminUser");
-    const storedToken = localStorage.getItem("token");
+    registerUnauthorizedHandler(() => setAdminUser(null));
 
-    if (storedAdminUser && storedToken) {
-      setAdminUser(JSON.parse(storedAdminUser));
-    }
+    (async () => {
+      const storedAdminUser = localStorage.getItem("adminUser");
+      const storedToken = localStorage.getItem("token");
 
-    setIsLoading(false);
+      if (storedAdminUser && storedToken) {
+        setAdminUser(JSON.parse(storedAdminUser));
+      }
+
+      setIsLoading(false);
+    })();
   }, []);
 
   const login = async (email: string, password: string) => {
