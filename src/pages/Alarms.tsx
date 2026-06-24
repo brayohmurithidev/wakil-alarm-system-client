@@ -12,6 +12,7 @@ import { AlarmIcon } from "@/components/icons/AlarmIcon";
 import { Loading } from "@/components/Loading";
 import { PageHeader } from "@/components/PageHeader";
 import { Body } from "@/components/ui";
+import { Avatar } from "@/components/ui/Avatar";
 import {
   Select,
   SelectContent,
@@ -103,9 +104,17 @@ export function Alarms() {
                     onClick={() => navigate(`/alarms/${alarm.id}`)}
                   >
                     <td className="px-6 py-4">
-                      <Body className="font-medium text-foreground">
-                        {alarm.userName}
-                      </Body>
+                      <div className="flex items-center gap-3">
+                        <Avatar
+                          name={alarm.userName}
+                          imageUrl={alarm.userImage}
+                          variant="alarm"
+                          size="sm"
+                        />
+                        <Body className="font-medium text-foreground">
+                          {alarm.userName}
+                        </Body>
+                      </div>
                     </td>
                     <td className="px-6 py-4">
                       <Body>{alarm.userPhone}</Body>

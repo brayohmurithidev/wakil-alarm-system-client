@@ -22,6 +22,7 @@ import { EditGuardDialog } from "@/components/EditGuardDialog";
 import { GuardStatusBadge } from "@/components/GuardStatusBadge";
 import { PageHeader } from "@/components/PageHeader";
 import { Body, Button, Input } from "@/components/ui";
+import { Avatar } from "@/components/ui/Avatar";
 import {
   Dialog,
   DialogContent,
@@ -223,7 +224,15 @@ export function Guards() {
                 filteredGuards.map((guard) => (
                   <TableRow key={guard.id}>
                     <TableCell className="px-6 py-4">
-                      <Body className="font-medium">{guard.name}</Body>
+                      <div className="flex items-center gap-3">
+                        <Avatar
+                          name={guard.name}
+                          imageUrl={guard.avatarUrl}
+                          variant="guard"
+                          size="sm"
+                        />
+                        <Body className="font-medium">{guard.name}</Body>
+                      </div>
                     </TableCell>
                     <TableCell className="px-6 py-4">
                       <Body>{guard.phone}</Body>
