@@ -9,6 +9,7 @@ import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
 
 import type { TrackerLocation } from "@/api/hooks/useGetTrackerLocation";
 import type { Alarm, AlarmStatus, Guard, GuardStatus } from "@/api/types";
+import { Avatar } from "@/components/ui/Avatar";
 
 const DefaultIcon = L.icon({
   iconUrl: icon,
@@ -221,7 +222,15 @@ export function AlarmMap({ alarms, trackers, guards, selectedGuardId, focusedAla
           >
             <Popup>
               <div className="p-2">
-                <h3 className="font-bold text-lg">{alarm.userName}</h3>
+                <div className="flex items-center gap-2 mb-1">
+                  <Avatar
+                    name={alarm.userName}
+                    imageUrl={alarm.userImage}
+                    variant="alarm"
+                    size="sm"
+                  />
+                  <h3 className="font-bold text-lg">{alarm.userName}</h3>
+                </div>
                 <p className="text-sm text-gray-600">{alarm.userPhone}</p>
                 <p className="text-xs text-gray-500 mt-1">
                   Status:
@@ -280,7 +289,15 @@ export function AlarmMap({ alarms, trackers, guards, selectedGuardId, focusedAla
                         ASSIGNED GUARD
                       </p>
                     )}
-                    <h3 className="font-bold text-lg">{guard.name}</h3>
+                    <div className="flex items-center gap-2 mb-1">
+                      <Avatar
+                        name={guard.name}
+                        imageUrl={guard.avatarUrl}
+                        variant="guard"
+                        size="sm"
+                      />
+                      <h3 className="font-bold text-lg">{guard.name}</h3>
+                    </div>
                     <p className="text-xs text-gray-500 mt-1">
                       Status:
                       <span className="font-semibold" style={{ color: GUARD_STATUS_COLOR[guard.status] }}>
