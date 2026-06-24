@@ -20,6 +20,7 @@ import { AlarmIcon } from "@/components/icons/AlarmIcon";
 import { Loading } from "@/components/Loading";
 import { PageHeader } from "@/components/PageHeader";
 import { Body, Button, Heading } from "@/components/ui";
+import { Avatar } from "@/components/ui/Avatar";
 import {
   Select,
   SelectContent,
@@ -181,13 +182,21 @@ export function AlarmDetail() {
 
               <div className="space-y-4">
                 <div className="flex justify-between items-start">
-                  <div>
-                    <Body size="sm" className="text-muted-foreground">
-                      {t("alarmDetail.user", "User")}
-                    </Body>
-                    <Body className="font-medium text-lg">
-                      {alarm.userName}
-                    </Body>
+                  <div className="flex items-center gap-3">
+                    <Avatar
+                      name={alarm.userName}
+                      imageUrl={alarm.userImage}
+                      variant="alarm"
+                      size="lg"
+                    />
+                    <div>
+                      <Body size="sm" className="text-muted-foreground">
+                        {t("alarmDetail.user", "User")}
+                      </Body>
+                      <Body className="font-medium text-lg">
+                        {alarm.userName}
+                      </Body>
+                    </div>
                   </div>
                   <AlarmStatusBadge status={alarm.status} />
                 </div>
@@ -418,6 +427,24 @@ export function AlarmDetail() {
                   <Body size="sm" className="text-muted-foreground mb-2">
                     {t("alarmDetail.assignedGuard", "Assigned Guard")}
                   </Body>
+                  {alarm.guard && (
+                    <div className="flex items-center gap-3 mb-3">
+                      <Avatar
+                        name={alarm.guard.name}
+                        imageUrl={alarm.guard.avatarUrl}
+                        variant="guard"
+                        size="md"
+                      />
+                      <div>
+                        <Body className="font-medium">
+                          {alarm.guard.name}
+                        </Body>
+                        <Body size="sm" className="text-muted-foreground">
+                          {alarm.guard.phone}
+                        </Body>
+                      </div>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2">
                     <div className="flex-1">
                       <Select
