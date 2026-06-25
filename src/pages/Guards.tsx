@@ -230,6 +230,7 @@ export function Guards() {
                           imageUrl={guard.avatarUrl}
                           variant="guard"
                           size="sm"
+                          guardStatus={guard.status}
                         />
                         <Body className="font-medium">{guard.name}</Body>
                       </div>

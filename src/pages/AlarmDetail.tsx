@@ -252,7 +252,7 @@ export function AlarmDetail() {
                     </div>
                   ) : (
                     <Button
-                      className="w-full bg-purple-600 hover:bg-purple-700"
+                      className="w-full"
                       size="lg"
                       onClick={() => {
                         if (id) {
@@ -434,6 +434,7 @@ export function AlarmDetail() {
                         imageUrl={alarm.guard.avatarUrl}
                         variant="guard"
                         size="md"
+                        guardStatus={alarm.guard.status}
                       />
                       <div>
                         <Body className="font-medium">

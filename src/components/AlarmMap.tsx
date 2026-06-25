@@ -1,26 +1,33 @@
-import "leaflet/dist/leaflet.css";
-
-import L from "leaflet";
-// Fix for default marker icon in React-Leaflet
-import icon from "leaflet/dist/images/marker-icon.png";
-import iconShadow from "leaflet/dist/images/marker-shadow.png";
-import { useEffect } from "react";
-import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
+import {
+  AdvancedMarker,
+  APIProvider,
+  InfoWindow,
+  Map,
+  Marker,
+  useAdvancedMarkerRef,
+  useMap,
+  useMarkerRef,
+} from "@vis.gl/react-google-maps";
+import { useEffect, useState } from "react";
 
 import type { TrackerLocation } from "@/api/hooks/useGetTrackerLocation";
 import type { Alarm, AlarmStatus, Guard, GuardStatus } from "@/api/types";
+import { LoaderIcon } from "@/components/icons";
 import { Avatar } from "@/components/ui/Avatar";
 
-const DefaultIcon = L.icon({
-  iconUrl: icon,
-  shadowUrl: iconShadow,
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-});
+function svgIcon(
+  svg: string,
+  size: number,
+  anchor: number,
+): google.maps.Icon {
+  return {
+    url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
+    scaledSize: new google.maps.Size(size, size),
+    anchor: new google.maps.Point(anchor, anchor),
+  };
+}
 
-L.Marker.prototype.options.icon = DefaultIcon;
-
-const getMarkerIcon = (status: AlarmStatus) => {
+const getMarkerIcon = (status: AlarmStatus): google.maps.Icon => {
   const colors: Record<AlarmStatus, string> = {
     pending: "#f97316",
     open: "#3b82f6",
@@ -32,52 +39,39 @@ const getMarkerIcon = (status: AlarmStatus) => {
 
   const color = colors[status] || colors.unknown;
 
-  return L.divIcon({
-    className: "custom-marker",
-    html: `
-      <div style="
-        position: relative;
-        width: 32px;
-        height: 32px;
-      ">
-        <svg
-          width="32"
-          height="32"
-          viewBox="0 0 24 24"
-          fill="${color}"
-          stroke="white"
-          stroke-width="1.5"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-        </svg>
-      </div>
-    `,
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -32],
-  });
+  const svg = `
+    <svg width="44" height="44" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <filter id="s" x="-40%" y="-40%" width="180%" height="180%">
+          <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" flood-color="#000" flood-opacity="0.5"/>
+        </filter>
+      </defs>
+      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"
+        fill="white" stroke="white" stroke-width="3.5" stroke-linejoin="round" filter="url(#s)"/>
+      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"
+        fill="${color}" stroke="white" stroke-width="1.5"/>
+      <circle cx="12" cy="9" r="2.5" fill="white"/>
+    </svg>
+  `;
+
+  return svgIcon(svg, 44, 44);
 };
 
-const getTrackerIcon = () => {
-  return L.divIcon({
-    className: "custom-marker",
-    html: `
-      <div style="
-        position: relative;
-        width: 36px;
-        height: 36px;
-      ">
-        <svg width="36" height="36" viewBox="0 0 24 24" fill="#10b981" stroke="white" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="12" cy="12" r="10"/>
-          <path d="M8 12l2-4h4l2 4-2 4h-4l-2-4z" fill="white" stroke="none"/>
-        </svg>
-      </div>
-    `,
-    iconSize: [36, 36],
-    iconAnchor: [18, 18],
-    popupAnchor: [0, -18],
-  });
+const getTrackerIcon = (): google.maps.Icon => {
+  const svg = `
+    <svg width="42" height="42" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <filter id="s" x="-40%" y="-40%" width="180%" height="180%">
+          <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" flood-color="#000" flood-opacity="0.5"/>
+        </filter>
+      </defs>
+      <circle cx="12" cy="12" r="10" fill="white" filter="url(#s)"/>
+      <circle cx="12" cy="12" r="10" fill="#10b981" stroke="white" stroke-width="2"/>
+      <path d="M8 12l2-4h4l2 4-2 4h-4l-2-4z" fill="white" stroke="none"/>
+    </svg>
+  `;
+
+  return svgIcon(svg, 42, 21);
 };
 
 const GUARD_STATUS_COLOR: Record<GuardStatus, string> = {
@@ -86,31 +80,6 @@ const GUARD_STATUS_COLOR: Record<GuardStatus, string> = {
   offline: "#6b7280",
 };
 
-const getGuardIcon = (status: GuardStatus, selected = false) => {
-  const color = GUARD_STATUS_COLOR[status];
-  const size = selected ? 46 : 34;
-  const anchor = size / 2;
-
-  return L.divIcon({
-    className: "custom-marker",
-    html: `
-      <div style="
-        position: relative;
-        width: ${size}px;
-        height: ${size}px;
-      ">
-        <svg width="${size}" height="${size}" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          ${selected ? `<circle cx="12" cy="12" r="11.25" fill="none" stroke="#fbd63d" stroke-width="1.5"/>` : ""}
-          <circle cx="12" cy="12" r="10" fill="${color}" stroke="white" stroke-width="1.5"/>
-          <path d="M12 11a3 3 0 100-6 3 3 0 000 6zm-5 6a5 5 0 0110 0H7z" fill="white"/>
-        </svg>
-      </div>
-    `,
-    iconSize: [size, size],
-    iconAnchor: [anchor, anchor],
-    popupAnchor: [0, -anchor],
-  });
-};
 
 type AlarmMapProps = {
   alarms: Alarm[];
@@ -135,7 +104,7 @@ function MapFocusHandler({
   const map = useMap();
 
   useEffect(() => {
-    if (!focusedAlarmId) return;
+    if (!map || !focusedAlarmId) return;
     const alarm = alarms.find((a) => a.id === focusedAlarmId);
     if (!alarm) return;
 
@@ -147,27 +116,215 @@ function MapFocusHandler({
     );
 
     if (selectedGuard) {
-      const bounds = L.latLngBounds(
-        [alarm.latitude, alarm.longitude],
-        [selectedGuard.currentLatitude as number, selectedGuard.currentLongitude as number],
-      );
-      map.flyToBounds(bounds, { padding: [60, 60], maxZoom: 16, duration: 1.5 });
-    } else {
-      map.flyTo([alarm.latitude, alarm.longitude], 16, {
-        duration: 1.5,
+      const bounds = new google.maps.LatLngBounds();
+      bounds.extend({ lat: alarm.latitude, lng: alarm.longitude });
+      bounds.extend({
+        lat: selectedGuard.currentLatitude as number,
+        lng: selectedGuard.currentLongitude as number,
       });
+      map.fitBounds(bounds, 60);
+    } else {
+      map.panTo({ lat: alarm.latitude, lng: alarm.longitude });
+      map.setZoom(16);
     }
   }, [focusedAlarmId, alarms, guards, selectedGuardId, map]);
 
   return null;
 }
 
-export function AlarmMap({ alarms, trackers, guards, selectedGuardId, focusedAlarmId }: AlarmMapProps) {
-  const defaultCenter: [number, number] = [-1.2921, 36.8219];
+// Google's map sits on a plain grey background until tiles have actually
+// painted - fires the callback once tiles for the current view are in, so
+// the caller can hide a loading overlay instead of flashing that grey.
+function TilesLoadedHandler({ onLoaded }: { onLoaded: () => void }) {
+  const map = useMap();
 
-  const center: [number, number] =
+  useEffect(() => {
+    if (!map) return;
+    const listener = map.addListener("tilesloaded", () => {
+      onLoaded();
+      listener.remove();
+    });
+    return () => listener.remove();
+  }, [map, onLoaded]);
+
+  return null;
+}
+
+function AlarmMarker({ alarm }: { alarm: Alarm }) {
+  const [markerRef, marker] = useMarkerRef();
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <>
+      <Marker
+        ref={markerRef}
+        position={{ lat: alarm.latitude, lng: alarm.longitude }}
+        icon={getMarkerIcon(alarm.status)}
+        onClick={() => setIsOpen(true)}
+      />
+      {isOpen && marker && (
+        <InfoWindow anchor={marker} onCloseClick={() => setIsOpen(false)}>
+          <div className="p-2">
+            <div className="flex items-center gap-2 mb-1">
+              <Avatar
+                name={alarm.userName}
+                imageUrl={alarm.userImage}
+                variant="alarm"
+                size="sm"
+              />
+              <h3 className="font-bold text-lg" style={{ color: "#111827" }}>{alarm.userName}</h3>
+            </div>
+            <p className="text-sm text-gray-600">{alarm.userPhone}</p>
+            <p className="text-xs text-gray-500 mt-1">
+              Status:
+              <span className="font-semibold text-red-600">
+                {alarm.status}
+              </span>
+            </p>
+            <p className="text-xs text-gray-400 mt-1">
+              {new Date(alarm.createdAt).toLocaleString()}
+            </p>
+          </div>
+        </InfoWindow>
+      )}
+    </>
+  );
+}
+
+function TrackerMarker({ tracker }: { tracker: TrackerLocation }) {
+  const [markerRef, marker] = useMarkerRef();
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <>
+      <Marker
+        ref={markerRef}
+        position={{ lat: tracker.latitude, lng: tracker.longitude }}
+        icon={getTrackerIcon()}
+        onClick={() => setIsOpen(true)}
+      />
+      {isOpen && marker && (
+        <InfoWindow anchor={marker} onCloseClick={() => setIsOpen(false)}>
+          <div className="p-2">
+            <h3 className="font-bold text-lg" style={{ color: "#111827" }}>Motorcycle</h3>
+            <p className="text-sm text-gray-600">IMEI: {tracker.imei}</p>
+            <p className="text-xs text-gray-500 mt-1">
+              Speed: {tracker.speed} km/h
+            </p>
+            <p className="text-xs text-gray-500">
+              Battery: {tracker.battery}%
+            </p>
+            <p className="text-xs text-gray-400 mt-1">{tracker.gpsTime}</p>
+          </div>
+        </InfoWindow>
+      )}
+    </>
+  );
+}
+
+function getInitials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
+  return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase();
+}
+
+function GuardMarker({
+  guard,
+  isSelected,
+}: {
+  guard: Guard & { currentLatitude: number; currentLongitude: number };
+  isSelected: boolean;
+}) {
+  const [markerRef, marker] = useAdvancedMarkerRef();
+  const [isOpen, setIsOpen] = useState(false);
+
+  const ringColor =
+    guard.status === "offline" ? "#6b7280" : GUARD_STATUS_COLOR[guard.status];
+  const size = isSelected ? 54 : 44;
+
+  return (
+    <>
+      <AdvancedMarker
+        ref={markerRef}
+        position={{ lat: guard.currentLatitude, lng: guard.currentLongitude }}
+        zIndex={isSelected ? 1000 : 0}
+        onClick={() => setIsOpen(true)}
+      >
+        <div
+          style={{
+            width: size,
+            height: size,
+            borderRadius: "10px",
+            border: `3px solid ${ringColor}`,
+            boxShadow: "0 2px 6px rgba(0,0,0,0.45)",
+            overflow: "hidden",
+            background: "#e5e7eb",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            outline: isSelected ? `2.5px solid #fbd63d` : "none",
+            outlineOffset: "2px",
+          }}
+        >
+          {guard.avatarUrl ? (
+            <img
+              src={guard.avatarUrl}
+              alt={guard.name}
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            />
+          ) : (
+            <span style={{ fontSize: size * 0.32, fontWeight: 600, color: "#374151" }}>
+              {getInitials(guard.name)}
+            </span>
+          )}
+        </div>
+      </AdvancedMarker>
+      {isOpen && marker && (
+        <InfoWindow anchor={marker} onCloseClick={() => setIsOpen(false)}>
+          <div className="p-2">
+            {isSelected && (
+              <p className="text-xs font-bold mb-1" style={{ color: "#fbd63d" }}>
+                ASSIGNED GUARD
+              </p>
+            )}
+            <div className="flex items-center gap-2 mb-1">
+              <Avatar
+                name={guard.name}
+                imageUrl={guard.avatarUrl}
+                variant="guard"
+                size="sm"
+                guardStatus={guard.status}
+              />
+              <h3 className="font-bold text-lg" style={{ color: "#111827" }}>{guard.name}</h3>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Status:
+              <span
+                className="font-semibold"
+                style={{ color: GUARD_STATUS_COLOR[guard.status] }}
+              >
+                {" "}{guard.status}
+              </span>
+            </p>
+            {guard.locationUpdatedAt && (
+              <p className="text-xs text-gray-400 mt-1">
+                Updated {new Date(guard.locationUpdatedAt).toLocaleString()}
+              </p>
+            )}
+          </div>
+        </InfoWindow>
+      )}
+    </>
+  );
+}
+
+export function AlarmMap({ alarms, trackers, guards, selectedGuardId, focusedAlarmId }: AlarmMapProps) {
+  const defaultCenter = { lat: -1.2921, lng: 36.8219 };
+
+  const center =
     alarms.length > 0
-      ? [alarms[0].latitude, alarms[0].longitude]
+      ? { lat: alarms[0].latitude, lng: alarms[0].longitude }
       : defaultCenter;
 
   const locatingGuards = guards?.filter(
@@ -176,8 +333,17 @@ export function AlarmMap({ alarms, trackers, guards, selectedGuardId, focusedAla
       (guard.currentLatitude == null || guard.currentLongitude == null),
   );
 
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? "";
+  const mapId = import.meta.env.VITE_GOOGLE_MAPS_MAP_ID ?? "DEMO_MAP_ID";
+  const [tilesLoaded, setTilesLoaded] = useState(false);
+
   return (
     <div className="relative h-full w-full">
+      {!tilesLoaded && (
+        <div className="absolute inset-0 z-[1000] flex items-center justify-center rounded-lg bg-card">
+          <LoaderIcon className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      )}
       {locatingGuards && locatingGuards.length > 0 && (
         <div className="absolute top-3 right-3 z-[1000] max-w-56 rounded-lg border border-border bg-card/95 p-2 shadow-md">
           <p className="mb-1 text-xs font-semibold text-muted-foreground">
@@ -199,122 +365,40 @@ export function AlarmMap({ alarms, trackers, guards, selectedGuardId, focusedAla
           </ul>
         </div>
       )}
-      <MapContainer
-        center={center}
-        zoom={12}
-        className="h-full w-full rounded-lg"
-      >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        <MapFocusHandler
-          alarms={alarms}
-          guards={guards}
-          selectedGuardId={selectedGuardId}
-          focusedAlarmId={focusedAlarmId}
-        />
-        {alarms.map((alarm) => (
-          <Marker
-            key={alarm.id}
-            position={[alarm.latitude, alarm.longitude]}
-            icon={getMarkerIcon(alarm.status)}
-          >
-            <Popup>
-              <div className="p-2">
-                <div className="flex items-center gap-2 mb-1">
-                  <Avatar
-                    name={alarm.userName}
-                    imageUrl={alarm.userImage}
-                    variant="alarm"
-                    size="sm"
-                  />
-                  <h3 className="font-bold text-lg">{alarm.userName}</h3>
-                </div>
-                <p className="text-sm text-gray-600">{alarm.userPhone}</p>
-                <p className="text-xs text-gray-500 mt-1">
-                  Status:
-                  <span className="font-semibold text-red-600">
-                    {alarm.status}
-                  </span>
-                </p>
-                <p className="text-xs text-gray-400 mt-1">
-                  {new Date(alarm.createdAt).toLocaleString()}
-                </p>
-              </div>
-            </Popup>
-          </Marker>
-        ))}
-        {trackers?.map((tracker) => (
-          <Marker
-            key={tracker.imei}
-            position={[tracker.latitude, tracker.longitude]}
-            icon={getTrackerIcon()}
-          >
-            <Popup>
-              <div className="p-2">
-                <h3 className="font-bold text-lg">Motorcycle</h3>
-                <p className="text-sm text-gray-600">IMEI: {tracker.imei}</p>
-                <p className="text-xs text-gray-500 mt-1">
-                  Speed: {tracker.speed} km/h
-                </p>
-                <p className="text-xs text-gray-500">
-                  Battery: {tracker.battery}%
-                </p>
-                <p className="text-xs text-gray-400 mt-1">
-                  {tracker.gpsTime}
-                </p>
-              </div>
-            </Popup>
-          </Marker>
-        ))}
-        {guards
-          ?.filter(
-            (guard): guard is Guard & { currentLatitude: number; currentLongitude: number } =>
-              guard.currentLatitude != null && guard.currentLongitude != null,
-          )
-          .map((guard) => {
-            const isSelected = guard.id === selectedGuardId;
-            return (
-              <Marker
+      <APIProvider apiKey={apiKey}>
+        <Map
+          defaultCenter={center}
+          defaultZoom={12}
+          mapId={mapId}
+          className="h-full w-full rounded-lg"
+        >
+          <TilesLoadedHandler onLoaded={() => setTilesLoaded(true)} />
+          <MapFocusHandler
+            alarms={alarms}
+            guards={guards}
+            selectedGuardId={selectedGuardId}
+            focusedAlarmId={focusedAlarmId}
+          />
+          {alarms.map((alarm) => (
+            <AlarmMarker key={alarm.id} alarm={alarm} />
+          ))}
+          {trackers?.map((tracker) => (
+            <TrackerMarker key={tracker.imei} tracker={tracker} />
+          ))}
+          {guards
+            ?.filter(
+              (guard): guard is Guard & { currentLatitude: number; currentLongitude: number } =>
+                guard.currentLatitude != null && guard.currentLongitude != null,
+            )
+            .map((guard) => (
+              <GuardMarker
                 key={guard.id}
-                position={[guard.currentLatitude, guard.currentLongitude]}
-                icon={getGuardIcon(guard.status, isSelected)}
-                zIndexOffset={isSelected ? 1000 : 0}
-              >
-                <Popup>
-                  <div className="p-2">
-                    {isSelected && (
-                      <p className="text-xs font-bold mb-1" style={{ color: "#fbd63d" }}>
-                        ASSIGNED GUARD
-                      </p>
-                    )}
-                    <div className="flex items-center gap-2 mb-1">
-                      <Avatar
-                        name={guard.name}
-                        imageUrl={guard.avatarUrl}
-                        variant="guard"
-                        size="sm"
-                      />
-                      <h3 className="font-bold text-lg">{guard.name}</h3>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Status:
-                      <span className="font-semibold" style={{ color: GUARD_STATUS_COLOR[guard.status] }}>
-                        {" "}{guard.status}
-                      </span>
-                    </p>
-                    {guard.locationUpdatedAt && (
-                      <p className="text-xs text-gray-400 mt-1">
-                        Updated {new Date(guard.locationUpdatedAt).toLocaleString()}
-                      </p>
-                    )}
-                  </div>
-                </Popup>
-              </Marker>
-            );
-          })}
-      </MapContainer>
+                guard={guard}
+                isSelected={guard.id === selectedGuardId}
+              />
+            ))}
+        </Map>
+      </APIProvider>
     </div>
   );
 }
