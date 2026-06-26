@@ -7,6 +7,7 @@ import { ForgotPassword } from "@/pages/ForgotPassword";
 import { Guards } from "@/pages/Guards";
 import { History } from "@/pages/History";
 import { Login } from "@/pages/Login";
+import { PrivacyPolicy } from "@/pages/PrivacyPolicy";
 import { Profile } from "@/pages/Profile";
 import { ResetPassword } from "@/pages/ResetPassword";
 import { Users } from "@/pages/Users";
@@ -75,6 +76,7 @@ const AppRoutes = () => {
           </ProtectedRoutes>
         }
       />
+      <Route path="/privacy-policy" element={<PrivacyPolicy />} />
       <Route path="/" element={<Navigate to="/login" />} />
     </Routes>
   );
