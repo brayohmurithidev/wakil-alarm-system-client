@@ -8,7 +8,8 @@ import {
   useMap,
   useMarkerRef,
 } from "@vis.gl/react-google-maps";
-import { useEffect, useState } from "react";
+import { Minus, Plus } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 
 import type { TrackerLocation } from "@/api/hooks/useGetTrackerLocation";
 import type { Alarm, AlarmStatus, Guard, GuardStatus } from "@/api/types";
@@ -87,24 +88,36 @@ type AlarmMapProps = {
   guards?: Guard[];
   selectedGuardId?: string | null;
   focusedAlarmId?: string | null;
+  focusedGuard?: Guard | null;
 };
 
-// Component to handle map focus/zoom
+// Handles smooth pan+zoom to a focused alarm or guard location.
 function MapFocusHandler({
   alarms,
   guards,
   selectedGuardId,
   focusedAlarmId,
+  focusedGuard,
 }: {
   alarms: Alarm[];
   guards?: Guard[];
   selectedGuardId?: string | null;
   focusedAlarmId?: string | null;
+  focusedGuard?: Guard | null;
 }) {
   const map = useMap();
 
   useEffect(() => {
-    if (!map || !focusedAlarmId) return;
+    if (!map) return;
+
+    // Guard focused from the panel
+    if (focusedGuard && focusedGuard.currentLatitude != null && focusedGuard.currentLongitude != null) {
+      map.panTo({ lat: focusedGuard.currentLatitude, lng: focusedGuard.currentLongitude });
+      map.setZoom(16);
+      return;
+    }
+
+    if (!focusedAlarmId) return;
     const alarm = alarms.find((a) => a.id === focusedAlarmId);
     if (!alarm) return;
 
@@ -122,14 +135,48 @@ function MapFocusHandler({
         lat: selectedGuard.currentLatitude as number,
         lng: selectedGuard.currentLongitude as number,
       });
-      map.fitBounds(bounds, 60);
+      map.fitBounds(bounds, 80);
     } else {
       map.panTo({ lat: alarm.latitude, lng: alarm.longitude });
       map.setZoom(16);
     }
-  }, [focusedAlarmId, alarms, guards, selectedGuardId, map]);
+  }, [focusedAlarmId, focusedGuard, alarms, guards, selectedGuardId, map]);
 
   return null;
+}
+
+// Custom zoom controls — replaces Google's default controls for a cleaner look.
+function ZoomControls() {
+  const map = useMap();
+
+  const zoomIn = useCallback(() => {
+    if (!map) return;
+    map.setZoom((map.getZoom() ?? 12) + 1);
+  }, [map]);
+
+  const zoomOut = useCallback(() => {
+    if (!map) return;
+    map.setZoom((map.getZoom() ?? 12) - 1);
+  }, [map]);
+
+  return (
+    <div className="absolute bottom-6 right-4 z-[500] flex flex-col gap-1">
+      <button
+        onClick={zoomIn}
+        className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card shadow-md text-foreground hover:bg-muted transition-colors"
+        aria-label="Zoom in"
+      >
+        <Plus size={16} />
+      </button>
+      <button
+        onClick={zoomOut}
+        className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card shadow-md text-foreground hover:bg-muted transition-colors"
+        aria-label="Zoom out"
+      >
+        <Minus size={16} />
+      </button>
+    </div>
+  );
 }
 
 // Google's map sits on a plain grey background until tiles have actually
@@ -319,7 +366,7 @@ function GuardMarker({
   );
 }
 
-export function AlarmMap({ alarms, trackers, guards, selectedGuardId, focusedAlarmId }: AlarmMapProps) {
+export function AlarmMap({ alarms, trackers, guards, selectedGuardId, focusedAlarmId, focusedGuard }: AlarmMapProps) {
   const defaultCenter = { lat: -1.2921, lng: 36.8219 };
 
   const center =
@@ -371,6 +418,8 @@ export function AlarmMap({ alarms, trackers, guards, selectedGuardId, focusedAla
           defaultZoom={12}
           mapId={mapId}
           className="h-full w-full rounded-lg"
+          disableDefaultUI
+          gestureHandling="greedy"
         >
           <TilesLoadedHandler onLoaded={() => setTilesLoaded(true)} />
           <MapFocusHandler
@@ -378,7 +427,9 @@ export function AlarmMap({ alarms, trackers, guards, selectedGuardId, focusedAla
             guards={guards}
             selectedGuardId={selectedGuardId}
             focusedAlarmId={focusedAlarmId}
+            focusedGuard={focusedGuard}
           />
+          <ZoomControls />
           {alarms.map((alarm) => (
             <AlarmMarker key={alarm.id} alarm={alarm} />
           ))}
