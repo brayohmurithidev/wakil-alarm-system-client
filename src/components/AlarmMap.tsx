@@ -8,7 +8,7 @@ import {
   useMap,
   useMarkerRef,
 } from "@vis.gl/react-google-maps";
-import { Minus, Plus } from "lucide-react";
+import { Maximize2, Minus, Plus } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import type { TrackerLocation } from "@/api/hooks/useGetTrackerLocation";
@@ -145,9 +145,18 @@ function MapFocusHandler({
   return null;
 }
 
-// Custom zoom controls — replaces Google's default controls for a cleaner look.
-function ZoomControls() {
+// Custom zoom + fit controls — replaces Google's default controls.
+function MapControls({
+  alarms,
+  guards,
+  trackers,
+}: {
+  alarms: Alarm[];
+  guards?: Guard[];
+  trackers?: TrackerLocation[];
+}) {
   const map = useMap();
+  const defaultCenter = { lat: -1.2921, lng: 36.8219 };
 
   const zoomIn = useCallback(() => {
     if (!map) return;
@@ -159,8 +168,44 @@ function ZoomControls() {
     map.setZoom((map.getZoom() ?? 12) - 1);
   }, [map]);
 
+  const fitAll = useCallback(() => {
+    if (!map) return;
+
+    const points: { lat: number; lng: number }[] = [
+      ...alarms.map((a) => ({ lat: a.latitude, lng: a.longitude })),
+      ...(guards ?? [])
+        .filter((g) => g.currentLatitude != null && g.currentLongitude != null)
+        .map((g) => ({ lat: g.currentLatitude as number, lng: g.currentLongitude as number })),
+      ...(trackers ?? []).map((t) => ({ lat: t.latitude, lng: t.longitude })),
+    ];
+
+    if (points.length === 0) {
+      map.panTo(defaultCenter);
+      map.setZoom(12);
+      return;
+    }
+
+    if (points.length === 1) {
+      map.panTo(points[0]);
+      map.setZoom(14);
+      return;
+    }
+
+    const bounds = new google.maps.LatLngBounds();
+    points.forEach((p) => bounds.extend(p));
+    map.fitBounds(bounds, 60);
+  }, [map, alarms, guards, trackers]);
+
   return (
     <div className="absolute bottom-6 right-4 z-[500] flex flex-col gap-1">
+      <button
+        onClick={fitAll}
+        className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card shadow-md text-foreground hover:bg-muted transition-colors"
+        aria-label="Fit all markers"
+        title="Fit all"
+      >
+        <Maximize2 size={15} />
+      </button>
       <button
         onClick={zoomIn}
         className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card shadow-md text-foreground hover:bg-muted transition-colors"
@@ -429,7 +474,7 @@ export function AlarmMap({ alarms, trackers, guards, selectedGuardId, focusedAla
             focusedAlarmId={focusedAlarmId}
             focusedGuard={focusedGuard}
           />
-          <ZoomControls />
+          <MapControls alarms={alarms} guards={guards} trackers={trackers} />
           {alarms.map((alarm) => (
             <AlarmMarker key={alarm.id} alarm={alarm} />
           ))}
