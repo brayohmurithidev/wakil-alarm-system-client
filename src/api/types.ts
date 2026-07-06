@@ -3,6 +3,9 @@ export type AlarmStatus =
   | "pending"
   | "open"
   | "acknowledged"
+  | "assigned"
+  | "guard_acknowledged"
+  | "report_submitted"
   | "closed"
   | "cancelled";
 

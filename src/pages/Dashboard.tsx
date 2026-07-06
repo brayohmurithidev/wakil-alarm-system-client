@@ -49,7 +49,10 @@ export function Dashboard() {
         (a) =>
           a.status === "pending" ||
           a.status === "open" ||
-          a.status === "acknowledged",
+          a.status === "acknowledged" ||
+          a.status === "assigned" ||
+          a.status === "guard_acknowledged" ||
+          a.status === "report_submitted",
       ) ?? [],
     [alarms],
   );

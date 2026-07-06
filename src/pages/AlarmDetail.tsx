@@ -552,6 +552,9 @@ export function AlarmDetail() {
                 <div className="pt-4 border-t border-border">
                   {(alarm.status === "open" ||
                     alarm.status === "acknowledged" ||
+                    alarm.status === "assigned" ||
+                    alarm.status === "guard_acknowledged" ||
+                    alarm.status === "report_submitted" ||
                     (alarm.status === "cancelled" && !alarm.report)) &&
                     !alarm.report && (
                       <Button

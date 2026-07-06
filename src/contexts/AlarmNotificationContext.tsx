@@ -74,6 +74,9 @@ export const AlarmNotificationProvider: React.FC<{
       setNotificationQueue((prev) => {
         if (
           updatedAlarm.status === "acknowledged" ||
+          updatedAlarm.status === "assigned" ||
+          updatedAlarm.status === "guard_acknowledged" ||
+          updatedAlarm.status === "report_submitted" ||
           updatedAlarm.status === "closed" ||
           updatedAlarm.status === "cancelled" ||
           updatedAlarm.status === "pending"

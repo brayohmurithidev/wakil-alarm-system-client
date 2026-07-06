@@ -19,6 +19,14 @@ export function AlarmItem({ alarm, onClick }: AlarmItemProps) {
         return "bg-orange-100 text-orange-800 border-yellow-300";
       case "open":
         return "bg-green-100 text-green-800 border-green-300";
+      case "acknowledged":
+        return "bg-purple-100 text-purple-800 border-purple-300";
+      case "assigned":
+        return "bg-indigo-100 text-indigo-800 border-indigo-300";
+      case "guard_acknowledged":
+        return "bg-teal-100 text-teal-800 border-teal-300";
+      case "report_submitted":
+        return "bg-lime-100 text-lime-800 border-lime-300";
       case "closed":
         return "bg-gray-100 text-gray-800 border-gray-300";
       case "cancelled":

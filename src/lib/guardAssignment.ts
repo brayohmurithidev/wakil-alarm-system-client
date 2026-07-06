@@ -1,6 +1,13 @@
 import type { Alarm } from "@/api/types";
 
-const ACTIVE_STATUSES = new Set(["pending", "open", "acknowledged"]);
+const ACTIVE_STATUSES = new Set([
+  "pending",
+  "open",
+  "acknowledged",
+  "assigned",
+  "guard_acknowledged",
+  "report_submitted",
+]);
 
 // Maps each guard to the one active (not closed/cancelled) alarm they're
 // currently assigned to, so a guard already handling an incident isn't
