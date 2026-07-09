@@ -48,6 +48,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = () => {
+    // Best-effort - revokes the refresh token cookie server-side so it
+    // can't be used to mint new access tokens after this point. Don't
+    // block the local logout on it; a network hiccup shouldn't strand the
+    // user in a "logged in" UI.
+    axiosInstance.post("/api/auth/logout").catch(() => {});
+
     localStorage.removeItem("token");
     localStorage.removeItem("adminUser");
     setAdminUser(null);

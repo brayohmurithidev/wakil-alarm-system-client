@@ -5,7 +5,9 @@ import { useUpdateAlarm } from "@/api/hooks/useUpdateAlarm";
 import type { Alarm } from "@/api/types";
 import { notify } from "@/components/Alert/notify";
 import { Body, Button, Heading } from "@/components/ui";
+import { Avatar } from "@/components/ui/Avatar";
 import { Dialog, DialogContent } from "@/components/ui/Dialog";
+import { useReverseGeocode } from "@/hooks/useReverseGeocode";
 
 type AlarmNotificationProps = {
   alarms: Alarm[];
@@ -119,74 +121,93 @@ export function AlarmNotification({
               }`}
             >
               {alarms.map((alarm) => (
-                <div
+                <AlarmCard
                   key={alarm.id}
-                  className={`space-y-3 ${
-                    alarmCount > 1
-                      ? "border border-border rounded-lg p-4 bg-card"
-                      : ""
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    {alarm.userImage && (
-                      <img
-                        src={alarm.userImage}
-                        alt={alarm.userName}
-                        className={`rounded-full object-cover border-2 border-red-500 ${
-                          alarmCount === 1 ? "w-16 h-16" : "w-12 h-12"
-                        }`}
-                      />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <Heading
-                        size={alarmCount === 1 ? "lg" : "sm"}
-                        className="mb-1 truncate"
-                      >
-                        {alarm.userName}
-                      </Heading>
-                      <Body
-                        size="sm"
-                        className="text-muted-foreground truncate"
-                      >
-                        {alarm.userPhone}
-                      </Body>
-                    </div>
-                  </div>
-
-                  <div className="bg-muted/50 rounded-lg p-3">
-                    <Body size="sm" className="text-muted-foreground mb-1">
-                      {t("alarmNotification.location")}
-                    </Body>
-                    <Body size="sm" className="font-mono">
-                      {alarm.latitude.toFixed(6)}, {alarm.longitude.toFixed(6)}
-                    </Body>
-                  </div>
-
-                  <div className="bg-muted/50 rounded-lg p-3">
-                    <Body size="sm" className="text-muted-foreground mb-1">
-                      {t("alarmNotification.time")}
-                    </Body>
-                    <Body size="sm">
-                      {new Date(alarm.createdAt).toLocaleString()}
-                    </Body>
-                  </div>
-
-                  <Button
-                    className="w-full bg-red-600 hover:bg-red-700"
-                    size={alarmCount === 1 ? "default" : "sm"}
-                    onClick={() => handleAcknowledge(alarm.id)}
-                    disabled={acknowledgingIds.has(alarm.id)}
-                  >
-                    {acknowledgingIds.has(alarm.id)
-                      ? t("alarmNotification.acknowledging", "Acknowledging...")
-                      : t("alarmNotification.acknowledge", "Acknowledge")}
-                  </Button>
-                </div>
+                  alarm={alarm}
+                  alarmCount={alarmCount}
+                  isAcknowledging={acknowledgingIds.has(alarm.id)}
+                  onAcknowledge={() => handleAcknowledge(alarm.id)}
+                />
               ))}
             </div>
           </>
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+type AlarmCardProps = {
+  alarm: Alarm;
+  alarmCount: number;
+  isAcknowledging: boolean;
+  onAcknowledge: () => void;
+};
+
+function AlarmCard({
+  alarm,
+  alarmCount,
+  isAcknowledging,
+  onAcknowledge,
+}: AlarmCardProps) {
+  const { t } = useTranslation();
+  const address = useReverseGeocode(alarm.latitude, alarm.longitude);
+
+  return (
+    <div
+      className={`space-y-3 ${
+        alarmCount > 1 ? "border border-border rounded-lg p-4 bg-card" : ""
+      }`}
+    >
+      <div className="flex items-center gap-3">
+        <Avatar
+          name={alarm.userName}
+          imageUrl={alarm.userImage}
+          variant="alarm"
+          size={alarmCount === 1 ? "lg" : "md"}
+        />
+        <div className="flex-1 min-w-0">
+          <Heading size={alarmCount === 1 ? "lg" : "sm"} className="mb-1 truncate">
+            {alarm.userName}
+          </Heading>
+          <Body size="sm" className="text-muted-foreground truncate">
+            {alarm.userPhone}
+          </Body>
+        </div>
+      </div>
+
+      <div className="bg-muted/50 rounded-lg p-3">
+        <Body size="sm" className="text-muted-foreground mb-1">
+          {t("alarmNotification.location")}
+        </Body>
+        <Body size="sm">
+          {address === undefined
+            ? t("alarmNotification.resolvingAddress", "Resolving address...")
+            : (address ??
+              `${alarm.latitude.toFixed(6)}, ${alarm.longitude.toFixed(6)}`)}
+        </Body>
+        <Body size="sm" className="font-mono text-muted-foreground">
+          {alarm.latitude.toFixed(6)}, {alarm.longitude.toFixed(6)}
+        </Body>
+      </div>
+
+      <div className="bg-muted/50 rounded-lg p-3">
+        <Body size="sm" className="text-muted-foreground mb-1">
+          {t("alarmNotification.time")}
+        </Body>
+        <Body size="sm">{new Date(alarm.createdAt).toLocaleString()}</Body>
+      </div>
+
+      <Button
+        className="w-full bg-red-600 hover:bg-red-700"
+        size={alarmCount === 1 ? "default" : "sm"}
+        onClick={onAcknowledge}
+        disabled={isAcknowledging}
+      >
+        {isAcknowledging
+          ? t("alarmNotification.acknowledging", "Acknowledging...")
+          : t("alarmNotification.acknowledge", "Acknowledge")}
+      </Button>
+    </div>
   );
 }

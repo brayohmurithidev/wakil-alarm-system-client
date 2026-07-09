@@ -26,6 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/Select";
+import { useReverseGeocode } from "@/hooks/useReverseGeocode";
 
 type CloseCaseDialogProps = {
   alarm: Alarm;
@@ -91,6 +92,7 @@ export function CloseCaseDialog({
   initialData = null,
 }: CloseCaseDialogProps) {
   const isViewMode = mode === "view";
+  const address = useReverseGeocode(alarm.latitude, alarm.longitude);
 
   const {
     control,
@@ -217,8 +219,11 @@ export function CloseCaseDialog({
                 <Body size="sm" className="text-muted-foreground">
                   Location
                 </Body>
-                <Body size="sm" className="font-medium">
-                  {alarm.latitude.toFixed(6)}, {alarm.longitude.toFixed(6)}
+                <Body size="sm" className="font-medium text-right">
+                  {address === undefined
+                    ? "Resolving address..."
+                    : (address ??
+                      `${alarm.latitude.toFixed(6)}, ${alarm.longitude.toFixed(6)}`)}
                 </Body>
               </div>
               <div className="flex justify-between items-center text-sm">

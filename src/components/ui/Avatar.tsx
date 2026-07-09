@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import type { GuardStatus } from "@/api/types";
 import { cn } from "@/lib/utils";
 
@@ -50,6 +52,22 @@ export function Avatar({
   className,
   guardStatus,
 }: AvatarProps) {
+  // imageUrl can be a dead/expired link (404, expired signed URL, etc.), not
+  // just null/undefined - without this, that renders as a broken-image icon
+  // instead of falling back to initials like the no-image case does.
+  const [imageFailed, setImageFailed] = useState(false);
+
+  // Reset if the URL changes (e.g. this Avatar instance gets reused for a
+  // different person without remounting) so a prior failure doesn't stick
+  // around and suppress a perfectly valid new image. Adjusted during render
+  // (React's recommended pattern for this) rather than in an effect, which
+  // would cause an extra post-commit render pass.
+  const [prevImageUrl, setPrevImageUrl] = useState(imageUrl);
+  if (imageUrl !== prevImageUrl) {
+    setPrevImageUrl(imageUrl);
+    setImageFailed(false);
+  }
+
   const ringStyle =
     variant === "guard" && guardStatus
       ? { borderColor: GUARD_RING_COLOR[guardStatus] }
@@ -65,11 +83,12 @@ export function Avatar({
       )}
       style={ringStyle}
     >
-      {imageUrl ? (
+      {imageUrl && !imageFailed ? (
         <img
           src={imageUrl}
           alt={name}
           className="h-full w-full object-cover"
+          onError={() => setImageFailed(true)}
         />
       ) : (
         <span>{getInitials(name)}</span>

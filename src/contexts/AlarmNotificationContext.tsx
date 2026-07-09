@@ -6,6 +6,7 @@ import { getAlarms } from "@/api/hooks/useGetAlarms";
 import { queryKeys } from "@/api/queryKeys";
 import type { Alarm } from "@/api/types";
 import { apiUrl } from "@/config";
+import { useAuth } from "@/contexts/AuthContext";
 
 type AlarmNotificationContextType = {
   notificationQueue: Alarm[];
@@ -22,10 +23,21 @@ export const AlarmNotificationProvider: React.FC<{
   children: React.ReactNode;
 }> = ({ children }) => {
   const queryClient = useQueryClient();
+  const { isAuthenticated } = useAuth();
   const [notificationQueue, setNotificationQueue] = useState<Alarm[]>([]);
 
+  // Drop any queued alarms the moment auth is lost, so the overlay (which
+  // renders unconditionally off queue length, outside the route guard)
+  // doesn't stay open on top of the login screen after logout.
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setNotificationQueue([]);
+    }
+  }, [isAuthenticated]);
 
   useEffect(() => {
+    if (!isAuthenticated) return;
+
     const fetchOpenAlarms = async () => {
       try {
         const alarms = await getAlarms();
@@ -37,9 +49,13 @@ export const AlarmNotificationProvider: React.FC<{
     };
 
     fetchOpenAlarms();
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
+    // Don't hold a live socket connection (and keep pushing alarm data into
+    // this context) for a logged-out session.
+    if (!isAuthenticated) return;
+
     const socket: Socket = io(apiUrl);
 
 
@@ -137,7 +153,7 @@ export const AlarmNotificationProvider: React.FC<{
     return () => {
       socket.disconnect();
     };
-  }, [queryClient]);
+  }, [queryClient, isAuthenticated]);
 
   const currentNotification = notificationQueue[0] || null;
 

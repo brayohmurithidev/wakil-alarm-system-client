@@ -20,6 +20,7 @@
     "title": "EMERGENCY ALARM",
     "subtitle": "New alarm triggered",
     "location": "Location",
+    "resolvingAddress": "Resolving address...",
     "time": "Time",
     "status": "Status",
     "acknowledge": "Acknowledge",

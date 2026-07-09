@@ -28,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/Select";
+import { useReverseGeocode } from "@/hooks/useReverseGeocode";
 import { formatDistanceKm, haversineKm } from "@/lib/distance";
 import { getActiveGuardAssignments } from "@/lib/guardAssignment";
 
@@ -40,6 +41,10 @@ export function AlarmDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data: alarm, isLoading, error } = useGetAlarm(id || "");
+  const address = useReverseGeocode(
+    alarm?.latitude ?? NaN,
+    alarm?.longitude ?? NaN,
+  );
   const { data: alarms } = useGetAlarms();
   const { data: guards } = useGetGuards();
   const guardAssignments = getActiveGuardAssignments(alarms ?? []);
@@ -213,6 +218,12 @@ export function AlarmDetail() {
                     {t("alarmDetail.location", "Location")}
                   </Body>
                   <Body className="font-medium">
+                    {address === undefined
+                      ? t("alarmDetail.resolvingAddress", "Resolving address...")
+                      : (address ??
+                        `${alarm.latitude.toFixed(6)}, ${alarm.longitude.toFixed(6)}`)}
+                  </Body>
+                  <Body size="sm" className="font-mono text-muted-foreground">
                     {alarm.latitude.toFixed(6)}, {alarm.longitude.toFixed(6)}
                   </Body>
                 </div>

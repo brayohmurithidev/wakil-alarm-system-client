@@ -8,6 +8,7 @@ import styles from "./index.module.css";
 const NotificationsContainer = () => (
   <ToastContainer
     className={styles.notificationsContainer}
+    style={{ zIndex: 10001 }}
     position="top-right"
     autoClose={6000}
     hideProgressBar
