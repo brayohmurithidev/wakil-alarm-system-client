@@ -44,9 +44,12 @@ let refreshPromise: Promise<string> | null = null;
 
 async function refreshAccessToken(): Promise<string> {
   if (!refreshPromise) {
+    const refreshUrl =
+      apiUrl === "/" ? "/api/auth/refresh-token" : `${apiUrl}/api/auth/refresh-token`;
+
     refreshPromise = axios
       .post(
-        `${apiUrl}/api/auth/refresh-token`,
+        refreshUrl,
         {},
         { withCredentials: true }
       )

@@ -1,6 +1,5 @@
 import {
   AdvancedMarker,
-  APIProvider,
   InfoWindow,
   Map,
   Marker,
@@ -15,6 +14,8 @@ import type { TrackerLocation } from "@/api/hooks/useGetTrackerLocation";
 import type { Alarm, AlarmStatus, Guard, GuardStatus } from "@/api/types";
 import { LoaderIcon } from "@/components/icons";
 import { Avatar } from "@/components/ui/Avatar";
+
+const DEFAULT_CENTER = { lat: -1.2921, lng: 36.8219 };
 
 function svgIcon(
   svg: string,
@@ -159,7 +160,6 @@ function MapControls({
   trackers?: TrackerLocation[];
 }) {
   const map = useMap();
-  const defaultCenter = { lat: -1.2921, lng: 36.8219 };
 
   const zoomIn = useCallback(() => {
     if (!map) return;
@@ -183,7 +183,7 @@ function MapControls({
     ];
 
     if (points.length === 0) {
-      map.panTo(defaultCenter);
+      map.panTo(DEFAULT_CENTER);
       map.setZoom(12);
       return;
     }
@@ -415,12 +415,10 @@ function GuardMarker({
 }
 
 export function AlarmMap({ alarms, trackers, guards, selectedGuardId, focusedAlarmId, focusedGuard }: AlarmMapProps) {
-  const defaultCenter = { lat: -1.2921, lng: 36.8219 };
-
   const center =
     alarms.length > 0
       ? { lat: alarms[0].latitude, lng: alarms[0].longitude }
-      : defaultCenter;
+      : DEFAULT_CENTER;
 
   const locatingGuards = guards?.filter(
     (guard) =>
@@ -428,7 +426,6 @@ export function AlarmMap({ alarms, trackers, guards, selectedGuardId, focusedAla
       (guard.currentLatitude == null || guard.currentLongitude == null),
   );
 
-  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? "";
   const mapId = import.meta.env.VITE_GOOGLE_MAPS_MAP_ID ?? "DEMO_MAP_ID";
   const [tilesLoaded, setTilesLoaded] = useState(false);
 
@@ -460,44 +457,42 @@ export function AlarmMap({ alarms, trackers, guards, selectedGuardId, focusedAla
           </ul>
         </div>
       )}
-      <APIProvider apiKey={apiKey}>
-        <Map
-          defaultCenter={center}
-          defaultZoom={12}
-          mapId={mapId}
-          className="h-full w-full rounded-lg"
-          disableDefaultUI
-          gestureHandling="greedy"
-        >
-          <TilesLoadedHandler onLoaded={() => setTilesLoaded(true)} />
-          <MapFocusHandler
-            alarms={alarms}
-            guards={guards}
-            selectedGuardId={selectedGuardId}
-            focusedAlarmId={focusedAlarmId}
-            focusedGuard={focusedGuard}
-          />
-          <MapControls alarms={alarms} guards={guards} trackers={trackers} />
-          {alarms.map((alarm) => (
-            <AlarmMarker key={alarm.id} alarm={alarm} />
+      <Map
+        defaultCenter={center}
+        defaultZoom={12}
+        mapId={mapId}
+        className="h-full w-full rounded-lg"
+        disableDefaultUI
+        gestureHandling="greedy"
+      >
+        <TilesLoadedHandler onLoaded={() => setTilesLoaded(true)} />
+        <MapFocusHandler
+          alarms={alarms}
+          guards={guards}
+          selectedGuardId={selectedGuardId}
+          focusedAlarmId={focusedAlarmId}
+          focusedGuard={focusedGuard}
+        />
+        <MapControls alarms={alarms} guards={guards} trackers={trackers} />
+        {alarms.map((alarm) => (
+          <AlarmMarker key={alarm.id} alarm={alarm} />
+        ))}
+        {trackers?.map((tracker) => (
+          <TrackerMarker key={tracker.imei} tracker={tracker} />
+        ))}
+        {guards
+          ?.filter(
+            (guard): guard is Guard & { currentLatitude: number; currentLongitude: number } =>
+              guard.currentLatitude != null && guard.currentLongitude != null,
+          )
+          .map((guard) => (
+            <GuardMarker
+              key={guard.id}
+              guard={guard}
+              isSelected={guard.id === selectedGuardId}
+            />
           ))}
-          {trackers?.map((tracker) => (
-            <TrackerMarker key={tracker.imei} tracker={tracker} />
-          ))}
-          {guards
-            ?.filter(
-              (guard): guard is Guard & { currentLatitude: number; currentLongitude: number } =>
-                guard.currentLatitude != null && guard.currentLongitude != null,
-            )
-            .map((guard) => (
-              <GuardMarker
-                key={guard.id}
-                guard={guard}
-                isSelected={guard.id === selectedGuardId}
-              />
-            ))}
-        </Map>
-      </APIProvider>
+      </Map>
     </div>
   );
 }

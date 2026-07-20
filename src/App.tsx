@@ -1,3 +1,4 @@
+import { APIProvider } from "@vis.gl/react-google-maps";
 import { Fragment } from "react";
 import { BrowserRouter } from "react-router-dom";
 
@@ -10,6 +11,8 @@ import {
 import { AuthProvider } from "@/contexts/AuthContext";
 
 import AppRoutes from "./routes";
+
+const googleMapsLibraries = ["geocoding"];
 
 function AppContent() {
   const { notificationQueue, removeFromQueue } = useAlarmNotification();
@@ -27,14 +30,18 @@ function AppContent() {
 }
 
 function App() {
+  const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? "";
+
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <AlarmNotificationProvider>
-          <AppContent />
-        </AlarmNotificationProvider>
-      </AuthProvider>
-    </BrowserRouter>
+    <APIProvider apiKey={googleMapsApiKey} libraries={googleMapsLibraries}>
+      <BrowserRouter>
+        <AuthProvider>
+          <AlarmNotificationProvider>
+            <AppContent />
+          </AlarmNotificationProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </APIProvider>
   );
 }
 

@@ -3,11 +3,9 @@
 // server-side Geocoding REST endpoint, because that REST endpoint doesn't
 // send CORS headers and can't be called directly from browser JS.
 //
-// AlarmNotification renders globally on every route (not just the map page),
-// so unlike AlarmMap.tsx we can't assume @vis.gl/react-google-maps's
-// <APIProvider> has already loaded the Maps script - this loads it itself
-// on first use, reusing an in-flight/already-loaded script if one exists
-// instead of injecting a second copy.
+// The application-level APIProvider is the single owner of Maps loading.
+// Reverse geocoding waits for that loader, then requests Google's modular
+// geocoding library instead of injecting another Maps <script> tag.
 
 function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -25,59 +23,49 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promi
   });
 }
 
-let loadPromise: Promise<void> | null = null;
+let geocodingLibraryPromise: Promise<google.maps.GeocodingLibrary> | null =
+  null;
 
-function loadGoogleMapsScript(): Promise<void> {
-  if (typeof window !== "undefined" && window.google?.maps?.Geocoder) {
-    return Promise.resolve();
-  }
+function loadGeocodingLibrary(): Promise<google.maps.GeocodingLibrary> {
+  if (geocodingLibraryPromise) return geocodingLibraryPromise;
 
-  if (loadPromise) return loadPromise;
+  const waitForProvider = new Promise<google.maps.GeocodingLibrary>(
+    (resolve, reject) => {
+      const startedAt = Date.now();
+      const checkProvider = () => {
+        if (!window.google?.maps?.importLibrary) {
+          if (Date.now() - startedAt >= 10000) {
+            reject(
+              new Error(
+                "Timed out loading the Google Maps geocoding library",
+              ),
+            );
+            return;
+          }
 
-  const rawPromise = new Promise<void>((resolve, reject) => {
-    const existing = document.querySelector<HTMLScriptElement>(
-      'script[src*="maps.googleapis.com/maps/api/js"]',
-    );
-
-    if (existing) {
-      // Already loading elsewhere (e.g. AlarmMap's <APIProvider>) - poll
-      // for it to finish instead of injecting a second <script> tag, which
-      // Google's loader warns/errors on. The outer withTimeout() below
-      // bounds how long this polls for.
-      const interval = setInterval(() => {
-        if (window.google?.maps?.Geocoder) {
-          clearInterval(interval);
-          resolve();
+          setTimeout(checkProvider, 50);
+          return;
         }
-      }, 100);
-      return;
-    }
 
-    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? "";
-    const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}`;
-    script.async = true;
-    script.onload = () => resolve();
-    script.onerror = () =>
-      reject(new Error("Failed to load Google Maps script"));
-    document.head.appendChild(script);
-  });
+        void google.maps
+          .importLibrary("geocoding")
+          .then(
+            (library) =>
+              resolve(library as google.maps.GeocodingLibrary),
+            reject,
+          );
+      };
 
-  // A blocked/stalled script request (ad-blocker, CSP, flaky network)
-  // doesn't always reliably fire onerror, and the "existing script" poll
-  // above has no natural end either - both would otherwise hang this
-  // forever and leave the UI on "Resolving address..." indefinitely.
-  loadPromise = withTimeout(
-    rawPromise,
-    10000,
-    "Timed out loading Google Maps script",
-  ).catch((error) => {
-    // Let the next call retry instead of permanently caching a failure.
-    loadPromise = null;
+      checkProvider();
+    },
+  );
+
+  geocodingLibraryPromise = waitForProvider.catch((error) => {
+    geocodingLibraryPromise = null;
     throw error;
   });
 
-  return loadPromise;
+  return geocodingLibraryPromise;
 }
 
 // Keyed to 5dp (~1m precision) - plenty for dedup, and alarms don't move
@@ -93,9 +81,8 @@ export async function reverseGeocode(
   if (cached) return cached;
 
   try {
-    await loadGoogleMapsScript();
-
-    const geocoder = new google.maps.Geocoder();
+    const { Geocoder } = await loadGeocodingLibrary();
+    const geocoder = new Geocoder();
     const address = await withTimeout(
       new Promise<string | null>((resolve) => {
         geocoder.geocode({ location: { lat, lng } }, (results, status) => {
