@@ -12,8 +12,12 @@ dist
 dist-ssr
 *.local
 
+# Every environment file stays local. `.env.staging` was previously tracked
+# and carried a live Google Maps browser key; real values now come from the
+# hosting platform's environment configuration. See .env.example.
 .env
-.env.production
+.env.*
+!.env.example
 
 # Editor directories and files
 .vscode/*
