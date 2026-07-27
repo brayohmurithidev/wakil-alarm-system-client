@@ -42,7 +42,12 @@ export function registerUnauthorizedHandler(handler: () => void) {
 // force an unnecessary hard logout.
 let refreshPromise: Promise<string> | null = null;
 
-async function refreshAccessToken(): Promise<string> {
+// Exported so the Socket.IO connection can reuse the same in-flight promise.
+// A socket rejected for an expired token and an HTTP 401 are the same
+// condition, and two independent refreshes would race — the loser replays an
+// already-rotated refresh token and trips the backend's reuse detection,
+// revoking every session for the operator.
+export async function refreshAccessToken(): Promise<string> {
   if (!refreshPromise) {
     const refreshUrl =
       apiUrl === "/" ? "/api/auth/refresh-token" : `${apiUrl}/api/auth/refresh-token`;

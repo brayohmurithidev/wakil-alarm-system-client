@@ -7,6 +7,7 @@ import { queryKeys } from "@/api/queryKeys";
 import type { Alarm } from "@/api/types";
 import { apiUrl } from "@/config";
 import { useAuth } from "@/contexts/AuthContext";
+import { refreshAccessToken } from "@/lib/axios";
 
 type AlarmNotificationContextType = {
   notificationQueue: Alarm[];
@@ -56,8 +57,33 @@ export const AlarmNotificationProvider: React.FC<{
     // this context) for a logged-out session.
     if (!isAuthenticated) return;
 
-    const socket: Socket = io(apiUrl);
+    // The socket now requires authentication — the server rejects any
+    // handshake without a valid admin or guard JWT. `auth` is a callback
+    // rather than a fixed object so every reconnect attempt reads the
+    // current token: after a refresh rotates it, a fixed value would keep
+    // replaying the stale one and the socket would never come back.
+    const socket: Socket = io(apiUrl, {
+      auth: (cb) => cb({ token: localStorage.getItem("token") ?? "" }),
+    });
 
+    // An expired token surfaces here rather than as a normal disconnect.
+    // Refresh once and let socket.io's own reconnection pick up the new
+    // token via the callback above.
+    socket.on("connect_error", () => {
+      void refreshAccessToken().catch(() => {
+        // Refresh failed — the axios interceptor's 401 handling owns the
+        // logout path, so there is nothing useful to do here.
+      });
+    });
+
+
+    // Events emitted while the socket was down are not replayed by the
+    // server, so refetch on every (re)connect rather than trusting the
+    // cache to still be current.
+    socket.on("connect", () => {
+      queryClient.invalidateQueries({ queryKey: [queryKeys.alarms] });
+      queryClient.invalidateQueries({ queryKey: [queryKeys.guards] });
+    });
 
     socket.on("alarm:created", (newAlarm: Alarm) => {
       if (newAlarm.status === "open") {
