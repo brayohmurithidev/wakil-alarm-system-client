@@ -469,6 +469,12 @@ export function AlarmDetail() {
                               value === UNASSIGNED_GUARD
                                 ? (null as any)
                                 : value,
+                            // Only claim reassignment intent when this view
+                            // actually shows an existing assignment. If the
+                            // server disagrees — because another dispatcher
+                            // assigned first — the request is refused rather
+                            // than silently stealing the incident.
+                            ...(alarm.guardId ? { reassign: true } : {}),
                           });
                         }}
                         disabled={
