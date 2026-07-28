@@ -36,37 +36,80 @@ function svgIcon(
   };
 }
 
-const getMarkerIcon = (status: AlarmStatus): google.maps.Icon => {
-  const colors: Record<AlarmStatus, string> = {
-    pending: "#f97316",
-    open: "#3b82f6",
-    acknowledged: "#a855f7",
-    assigned: "#6366f1",
-    guard_acknowledged: "#14b8a6",
-    report_submitted: "#84cc16",
-    closed: "#6b7280",
-    cancelled: "#9ca3af",
-    unknown: "#9ca3af",
-  };
+// Brand-guide reserved colours only — alarm red, guard blue, Wakil gold for
+// selection. Status/urgency is conveyed through opacity and a small badge,
+// not by swapping in unrelated hues.
+const ALARM_RED = "#ef4444";
+const ALARM_CLOSED_GREY = "#6b7280";
+const GUARD_BLUE = "#3b82f6";
+const WAKIL_GOLD = "#fbd63d";
 
-  const color = colors[status] || colors.unknown;
+const UNACKNOWLEDGED_ALARM_STATUSES = new Set<AlarmStatus>([
+  "pending",
+  "open",
+  "unknown",
+]);
+const CLOSED_ALARM_STATUSES = new Set<AlarmStatus>(["closed", "cancelled"]);
+
+// A pulsing gold halo behind the marker shape — shared by alarms and guards
+// so "selected" reads identically across both. SMIL animation embedded in
+// the SVG animates even though the icon is served as a static image URL, and
+// stays crisp at any zoom/DPR since it's vector, not a raster sprite.
+function selectionHalo(cx: number, cy: number): string {
+  return `
+    <circle cx="${cx}" cy="${cy}" r="10" fill="none" stroke="${WAKIL_GOLD}" stroke-width="2" opacity="0.9">
+      <animate attributeName="r" values="9;13;9" dur="1.6s" repeatCount="indefinite" />
+      <animate attributeName="opacity" values="0.9;0.25;0.9" dur="1.6s" repeatCount="indefinite" />
+    </circle>
+  `;
+}
+
+// Alarm markers keep the teardrop-pin silhouette; a shield badge (see
+// getGuardMarkerIcon) is used for guards so the two are distinguishable by
+// shape alone, not just colour. A 32x32 viewBox (rather than 24x24) leaves
+// room for the selection halo to breathe without clipping.
+const getMarkerIcon = (
+  status: AlarmStatus,
+  isSelected = false,
+): google.maps.Icon => {
+  const isActive = UNACKNOWLEDGED_ALARM_STATUSES.has(status);
+  const isClosed = CLOSED_ALARM_STATUSES.has(status);
+  const fill = isClosed ? ALARM_CLOSED_GREY : ALARM_RED;
+  const opacity = isClosed ? 0.55 : 1;
+  const size = isSelected ? 50 : 44;
+
+  // Acknowledged (someone's responding) gets a small white check badge so
+  // the two states this task calls for — active vs acknowledged — read
+  // apart without relying on colour alone.
+  const acknowledgedBadge =
+    !isActive && !isClosed
+      ? `<circle cx="22" cy="9" r="4.5" fill="white" stroke="${ALARM_RED}" stroke-width="1"/>
+         <path d="M20 9l1.3 1.3L24 7.6" fill="none" stroke="${ALARM_RED}" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>`
+      : "";
 
   const svg = `
-    <svg width="44" height="44" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    <svg width="${size}" height="${size}" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <filter id="s" x="-40%" y="-40%" width="180%" height="180%">
           <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" flood-color="#000" flood-opacity="0.5"/>
         </filter>
       </defs>
-      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"
-        fill="white" stroke="white" stroke-width="3.5" stroke-linejoin="round" filter="url(#s)"/>
-      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"
-        fill="${color}" stroke="white" stroke-width="1.5"/>
-      <circle cx="12" cy="9" r="2.5" fill="white"/>
+      ${isSelected ? selectionHalo(16, 13) : ""}
+      <g filter="url(#s)">
+        <path d="M16 6C12.13 6 9 9.13 9 13c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"
+          fill="white" stroke="white" stroke-width="3.5" stroke-linejoin="round"/>
+      </g>
+      <path d="M16 6C12.13 6 9 9.13 9 13c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"
+        fill="${fill}" stroke="white" stroke-width="1.5" opacity="${opacity}"/>
+      <g transform="translate(16,13)" opacity="${opacity}">
+        <path d="M0-4.2c-2 0-3.4 1.6-3.4 3.7v2.5L-4.5 3.6c-.3.4 0 .9.5.9h8c.5 0 .8-.5.5-.9L3.4 2V-0.5C3.4-2.6 2-4.2 0-4.2z" fill="white"/>
+        <circle cx="0" cy="4.3" r="1" fill="white"/>
+      </g>
+      ${acknowledgedBadge}
     </svg>
   `;
 
-  return svgIcon(svg, 44, 44);
+  return svgIcon(svg, size, Math.round(size * 0.41));
 };
 
 const getTrackerIcon = (): google.maps.Icon => {
@@ -92,41 +135,42 @@ const GUARD_STATUS_COLOR: Record<GuardStatus, string> = {
   offline: "#6b7280",
 };
 
-// Same teardrop family as alarm markers (getMarkerIcon) so the two read as
-// related map objects, distinguished by colour and inner glyph (person vs
-// bell) rather than shape alone.
+// A shield/security-badge silhouette — deliberately a different shape from
+// the alarm teardrop pin (not just a different colour) so the two are
+// distinguishable at a glance, per the guard-vs-alarm marker requirement.
+// Same 32x32-viewBox-with-padding approach as getMarkerIcon, for the same
+// reason (room for the selection halo).
 function getGuardMarkerIcon(
   status: GuardStatus,
   isSelected: boolean,
   isStale: boolean,
 ): google.maps.Icon {
-  const color = GUARD_STATUS_COLOR[status];
-  const size = isSelected ? 50 : 42;
-  const opacity = status === "offline" ? 0.55 : isStale ? 0.75 : 1;
-  const ring = isSelected
-    ? `<path d="M12 1.3C7.8 1.3 4.3 4.7 4.3 9c0 5.6 7.7 13.6 7.7 13.6s7.7-8 7.7-13.6c0-4.3-3.5-7.7-7.7-7.7z" fill="none" stroke="#fbd63d" stroke-width="1.5"/>`
-    : "";
+  const isOnline = status !== "offline";
+  const size = isSelected ? 50 : 44;
+  // "Offline guard (reduced emphasis)" per the marker-states requirement —
+  // reduced opacity on the same guard blue, not a different hue.
+  const opacity = !isOnline ? 0.45 : isStale ? 0.75 : 1;
 
   const svg = `
-    <svg width="44" height="44" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    <svg width="${size}" height="${size}" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <filter id="s" x="-40%" y="-40%" width="180%" height="180%">
           <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" flood-color="#000" flood-opacity="0.5"/>
         </filter>
       </defs>
-      <g opacity="${opacity}">
-        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"
-          fill="white" stroke="white" stroke-width="3.5" stroke-linejoin="round" filter="url(#s)"/>
-        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"
-          fill="${color}" stroke="white" stroke-width="1.5"/>
-        <circle cx="12" cy="8.6" r="1.6" fill="white"/>
-        <path d="M8.6 12.2c0-1.6 1.5-2.5 3.4-2.5s3.4 0.9 3.4 2.5v0.6H8.6v-0.6z" fill="white"/>
-        ${ring}
+      ${isSelected ? selectionHalo(16, 15) : ""}
+      <g filter="url(#s)">
+        <path d="M16 5L23.5 8V14C23.5 20 20 24.7 16 26.5C12 24.7 8.5 20 8.5 14V8Z"
+          fill="white" stroke="white" stroke-width="3.5" stroke-linejoin="round"/>
       </g>
+      <path d="M16 5L23.5 8V14C23.5 20 20 24.7 16 26.5C12 24.7 8.5 20 8.5 14V8Z"
+        fill="${GUARD_BLUE}" stroke="white" stroke-width="1.5" opacity="${opacity}"/>
+      <path d="M12 15.2l2.6 2.6 5.4-5.6" fill="none" stroke="white" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" opacity="${opacity}"/>
     </svg>
   `;
 
-  return svgIcon(svg, size, size / 2);
+  return svgIcon(svg, size, Math.round(size * 0.47));
 }
 
 
@@ -135,6 +179,11 @@ type AlarmMapProps = {
   trackers?: TrackerLocation[];
   guards?: Guard[];
   selectedGuardId?: string | null;
+  // The alarm currently highlighted (from a panel row or a marker click) —
+  // shows the gold selection halo. Separate from focusedAlarmId, which
+  // drives the camera pan and is unrelated to which marker is visually
+  // selected.
+  selectedAlarmId?: string | null;
   focusedAlarmId?: string | null;
   focusedGuard?: Guard | null;
   // A Google Maps JS style array (see src/lib/mapTheme.ts) — undefined
@@ -300,9 +349,11 @@ function TilesLoadedHandler({ onLoaded }: { onLoaded: () => void }) {
 
 function AlarmMarker({
   alarm,
+  isSelected,
   onMarkerClick,
 }: {
   alarm: Alarm;
+  isSelected: boolean;
   onMarkerClick?: (alarmId: string) => void;
 }) {
   const [markerRef, marker] = useMarkerRef();
@@ -314,7 +365,8 @@ function AlarmMarker({
       <Marker
         ref={markerRef}
         position={{ lat: alarm.latitude, lng: alarm.longitude }}
-        icon={getMarkerIcon(alarm.status)}
+        icon={getMarkerIcon(alarm.status, isSelected)}
+        zIndex={isSelected ? 1000 : undefined}
         onClick={() => {
           setIsOpen(true);
           onMarkerClick?.(alarm.id);
@@ -473,6 +525,7 @@ export function AlarmMap({
   trackers,
   guards,
   selectedGuardId,
+  selectedAlarmId,
   focusedAlarmId,
   focusedGuard,
   mapStyle,
@@ -541,6 +594,7 @@ export function AlarmMap({
           <AlarmMarker
             key={alarm.id}
             alarm={alarm}
+            isSelected={alarm.id === selectedAlarmId}
             onMarkerClick={onAlarmMarkerClick}
           />
         ))}

@@ -171,6 +171,8 @@ export function Dashboard() {
               alarms={activeAlarms}
               trackers={trackers}
               guards={guards}
+              selectedAlarmId={selectedAlarmId}
+              selectedGuardId={selectedGuard?.id ?? null}
               focusedAlarmId={focusedAlarmId}
               focusedGuard={focusedGuard}
               onAlarmMarkerClick={handleMarkerAlarmClick}

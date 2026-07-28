@@ -21,6 +21,8 @@ type LiveMapProps = {
   alarms: Alarm[];
   trackers?: TrackerLocation[];
   guards?: Guard[];
+  selectedAlarmId?: string | null;
+  selectedGuardId?: string | null;
   focusedAlarmId?: string | null;
   focusedGuard?: Guard | null;
   onAlarmMarkerClick?: (alarmId: string) => void;
@@ -31,6 +33,8 @@ export function LiveMap({
   alarms,
   trackers,
   guards,
+  selectedAlarmId,
+  selectedGuardId,
   focusedAlarmId,
   focusedGuard,
   onAlarmMarkerClick,
@@ -90,6 +94,8 @@ export function LiveMap({
           alarms={filteredAlarms}
           trackers={visibility === "guards" ? undefined : trackers}
           guards={filteredGuards}
+          selectedAlarmId={selectedAlarmId}
+          selectedGuardId={selectedGuardId}
           focusedAlarmId={focusedAlarmId}
           focusedGuard={focusedGuard}
           mapStyle={resolveMapStyle(mapTheme)}
