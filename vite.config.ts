@@ -50,6 +50,7 @@ export default defineConfig(({ mode }) => {
           proxy: {
             "/api": proxyOptions,
             "/socket.io": { ...proxyOptions, ws: true },
+            "/health": proxyOptions,
           },
         }
       : undefined,

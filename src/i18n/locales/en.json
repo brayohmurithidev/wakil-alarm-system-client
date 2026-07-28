@@ -1,7 +1,27 @@
 {
   "dashboard": {
     "title": "Dashboard",
+    "subtitle": "Real-time overview of alarms, guards and system activity",
     "connected": "Connected",
+    "connecting": "Connecting",
+    "reconnecting": "Reconnecting",
+    "offline": "Offline",
+    "systemHealthy": "System Healthy",
+    "systemDegraded": "System Degraded",
+    "systemUnavailable": "System Unavailable",
+    "systemUnknown": "Checking system…",
+    "activeAlarms": "Active Alarms",
+    "guardsOnline": "Guards Online",
+    "totalGuards": "Total Guards",
+    "avgResponseTime": "Avg. Response Time",
+    "viewAll": "View all",
+    "quickActions": "Quick Actions",
+    "operationalSummary": "Operational Summary",
+    "systemUptime": "System Uptime",
+    "lastAlarm": "Last Alarm",
+    "totalAlarmsToday": "Total Alarms (Today)",
+    "guardsEngaged": "Guards Engaged",
+    "unavailable": "Unavailable",
     "disconnected": "Disconnected"
   },
   "map": {
