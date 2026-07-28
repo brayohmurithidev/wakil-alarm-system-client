@@ -7,13 +7,22 @@ import {
   useMap,
   useMarkerRef,
 } from "@vis.gl/react-google-maps";
-import { Maximize2, Minus, Plus } from "lucide-react";
+import { ChevronRight, Maximize2, Minus, Plus } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import type { TrackerLocation } from "@/api/hooks/useGetTrackerLocation";
 import type { Alarm, AlarmStatus, Guard, GuardStatus } from "@/api/types";
 import { LoaderIcon } from "@/components/icons";
 import { Avatar } from "@/components/ui/Avatar";
+
+function timeAgo(iso: string): string {
+  const secs = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (secs < 60) return "just now";
+  if (secs < 3600) return `${Math.floor(secs / 60)}m ago`;
+  if (secs < 86400) return `${Math.floor(secs / 3600)}h ago`;
+  return `${Math.floor(secs / 86400)}d ago`;
+}
 
 const DEFAULT_CENTER = { lat: -1.2921, lng: 36.8219 };
 
@@ -93,6 +102,15 @@ type AlarmMapProps = {
   selectedGuardId?: string | null;
   focusedAlarmId?: string | null;
   focusedGuard?: Guard | null;
+  // Overrides the env-derived default — lets callers switch between a
+  // dark- and light-styled Map ID (see src/lib/mapTheme.ts).
+  mapId?: string;
+  // Fired when a marker itself is clicked, separate from focusedAlarmId /
+  // focusedGuard (which pan the camera). Lets a caller sync panel-row
+  // highlighting to a map click without moving the map — selecting a
+  // marker must not reset its position.
+  onAlarmMarkerClick?: (alarmId: string) => void;
+  onGuardMarkerClick?: (guard: Guard) => void;
 };
 
 // Handles smooth pan+zoom to a focused alarm or guard location.
@@ -227,6 +245,31 @@ function MapControls({
   );
 }
 
+// Google's Map ID is immutable once a map instance is created, so switching
+// dark/light styles (see src/lib/mapTheme.ts) has to remount `<Map>` via a
+// changing `key`. That would otherwise reset the viewport back to
+// `defaultCenter`/`defaultZoom` — this keeps a live ref of wherever the user
+// last panned/zoomed to so the parent can re-mount at the same spot instead.
+function MapViewportTracker({
+  onChange,
+}: {
+  onChange: (center: google.maps.LatLngLiteral, zoom: number) => void;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!map) return;
+    const listener = map.addListener("idle", () => {
+      const c = map.getCenter();
+      const z = map.getZoom();
+      if (c && z != null) onChange({ lat: c.lat(), lng: c.lng() }, z);
+    });
+    return () => listener.remove();
+  }, [map, onChange]);
+
+  return null;
+}
+
 // Google's map sits on a plain grey background until tiles have actually
 // painted - fires the callback once tiles for the current view are in, so
 // the caller can hide a loading overlay instead of flashing that grey.
@@ -245,9 +288,16 @@ function TilesLoadedHandler({ onLoaded }: { onLoaded: () => void }) {
   return null;
 }
 
-function AlarmMarker({ alarm }: { alarm: Alarm }) {
+function AlarmMarker({
+  alarm,
+  onMarkerClick,
+}: {
+  alarm: Alarm;
+  onMarkerClick?: (alarmId: string) => void;
+}) {
   const [markerRef, marker] = useMarkerRef();
   const [isOpen, setIsOpen] = useState(false);
+  const navigate = useNavigate();
 
   return (
     <>
@@ -255,11 +305,14 @@ function AlarmMarker({ alarm }: { alarm: Alarm }) {
         ref={markerRef}
         position={{ lat: alarm.latitude, lng: alarm.longitude }}
         icon={getMarkerIcon(alarm.status)}
-        onClick={() => setIsOpen(true)}
+        onClick={() => {
+          setIsOpen(true);
+          onMarkerClick?.(alarm.id);
+        }}
       />
       {isOpen && marker && (
         <InfoWindow anchor={marker} onCloseClick={() => setIsOpen(false)}>
-          <div className="p-2">
+          <div className="p-2 min-w-[180px]">
             <div className="flex items-center gap-2 mb-1">
               <Avatar
                 name={alarm.userName}
@@ -273,12 +326,24 @@ function AlarmMarker({ alarm }: { alarm: Alarm }) {
             <p className="text-xs text-gray-500 mt-1">
               Status:
               <span className="font-semibold text-red-600">
-                {alarm.status}
+                {" "}{alarm.status}
               </span>
             </p>
+            {alarm.guard && (
+              <p className="text-xs text-gray-500">
+                Assigned: <span className="font-semibold">{alarm.guard.name}</span>
+              </p>
+            )}
             <p className="text-xs text-gray-400 mt-1">
-              {new Date(alarm.createdAt).toLocaleString()}
+              {timeAgo(alarm.createdAt)}
             </p>
+            <button
+              onClick={() => navigate(`/alarms/${alarm.id}`)}
+              className="mt-2 flex items-center gap-1 text-xs font-semibold"
+              style={{ color: "#b45309" }}
+            >
+              View details <ChevronRight size={12} />
+            </button>
           </div>
         </InfoWindow>
       )}
@@ -327,9 +392,11 @@ function getInitials(name: string) {
 function GuardMarker({
   guard,
   isSelected,
+  onMarkerClick,
 }: {
   guard: Guard & { currentLatitude: number; currentLongitude: number };
   isSelected: boolean;
+  onMarkerClick?: (guard: Guard) => void;
 }) {
   const [markerRef, marker] = useAdvancedMarkerRef();
   const [isOpen, setIsOpen] = useState(false);
@@ -337,6 +404,7 @@ function GuardMarker({
   const ringColor =
     guard.status === "offline" ? "#6b7280" : GUARD_STATUS_COLOR[guard.status];
   const size = isSelected ? 54 : 44;
+  const isStale = guard.status !== "offline" && !guard.locationUpdatedAt;
 
   return (
     <>
@@ -344,7 +412,10 @@ function GuardMarker({
         ref={markerRef}
         position={{ lat: guard.currentLatitude, lng: guard.currentLongitude }}
         zIndex={isSelected ? 1000 : 0}
-        onClick={() => setIsOpen(true)}
+        onClick={() => {
+          setIsOpen(true);
+          onMarkerClick?.(guard);
+        }}
       >
         <div
           style={{
@@ -360,6 +431,7 @@ function GuardMarker({
             justifyContent: "center",
             outline: isSelected ? `2.5px solid #fbd63d` : "none",
             outlineOffset: "2px",
+            opacity: guard.status === "offline" ? 0.55 : isStale ? 0.75 : 1,
           }}
         >
           {guard.avatarUrl ? (
@@ -402,11 +474,22 @@ function GuardMarker({
                 {" "}{guard.status}
               </span>
             </p>
-            {guard.locationUpdatedAt && (
+            <p className="text-xs text-gray-500">
+              {guard.status === "offline"
+                ? "Off duty"
+                : guard.status === "busy"
+                  ? "Engaged"
+                  : "Available"}
+            </p>
+            {guard.locationUpdatedAt ? (
               <p className="text-xs text-gray-400 mt-1">
-                Updated {new Date(guard.locationUpdatedAt).toLocaleString()}
+                Updated {timeAgo(guard.locationUpdatedAt)}
               </p>
-            )}
+            ) : guard.lastActiveAt ? (
+              <p className="text-xs text-gray-400 mt-1">
+                Last seen {timeAgo(guard.lastActiveAt)}
+              </p>
+            ) : null}
           </div>
         </InfoWindow>
       )}
@@ -414,7 +497,17 @@ function GuardMarker({
   );
 }
 
-export function AlarmMap({ alarms, trackers, guards, selectedGuardId, focusedAlarmId, focusedGuard }: AlarmMapProps) {
+export function AlarmMap({
+  alarms,
+  trackers,
+  guards,
+  selectedGuardId,
+  focusedAlarmId,
+  focusedGuard,
+  mapId: mapIdOverride,
+  onAlarmMarkerClick,
+  onGuardMarkerClick,
+}: AlarmMapProps) {
   const center =
     alarms.length > 0
       ? { lat: alarms[0].latitude, lng: alarms[0].longitude }
@@ -426,11 +519,29 @@ export function AlarmMap({ alarms, trackers, guards, selectedGuardId, focusedAla
       (guard.currentLatitude == null || guard.currentLongitude == null),
   );
 
-  const mapId = import.meta.env.VITE_GOOGLE_MAPS_MAP_ID ?? "DEMO_MAP_ID";
+  const mapId =
+    mapIdOverride ?? import.meta.env.VITE_GOOGLE_MAPS_MAP_ID ?? "DEMO_MAP_ID";
   const [tilesLoaded, setTilesLoaded] = useState(false);
 
+  // Google's Map ID can't change on a live map instance, so a theme switch
+  // remounts `<Map>` under a new `key`. This state survives that remount
+  // (it lives on the outer component, not inside `<Map>`) and seeds the
+  // next mount's defaultCenter/defaultZoom so the viewport doesn't jump
+  // back to Nairobi at zoom 12. A ref would be simpler but reading `.current`
+  // during render isn't allowed, so this uses state instead.
+  const [lastViewport, setLastViewport] = useState<{
+    center: google.maps.LatLngLiteral;
+    zoom: number;
+  } | null>(null);
+  const handleViewportChange = useCallback(
+    (c: google.maps.LatLngLiteral, zoom: number) => {
+      setLastViewport({ center: c, zoom });
+    },
+    [],
+  );
+
   return (
-    <div className="relative h-full w-full">
+    <div className="relative flex h-full w-full min-h-0 flex-1 flex-col">
       {!tilesLoaded && (
         <div className="absolute inset-0 z-[1000] flex items-center justify-center rounded-lg bg-card">
           <LoaderIcon className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -458,13 +569,15 @@ export function AlarmMap({ alarms, trackers, guards, selectedGuardId, focusedAla
         </div>
       )}
       <Map
-        defaultCenter={center}
-        defaultZoom={12}
+        key={mapId}
+        defaultCenter={lastViewport?.center ?? center}
+        defaultZoom={lastViewport?.zoom ?? 12}
         mapId={mapId}
-        className="h-full w-full rounded-lg"
+        className="h-full w-full min-h-0 flex-1 rounded-lg"
         disableDefaultUI
         gestureHandling="greedy"
       >
+        <MapViewportTracker onChange={handleViewportChange} />
         <TilesLoadedHandler onLoaded={() => setTilesLoaded(true)} />
         <MapFocusHandler
           alarms={alarms}
@@ -475,7 +588,11 @@ export function AlarmMap({ alarms, trackers, guards, selectedGuardId, focusedAla
         />
         <MapControls alarms={alarms} guards={guards} trackers={trackers} />
         {alarms.map((alarm) => (
-          <AlarmMarker key={alarm.id} alarm={alarm} />
+          <AlarmMarker
+            key={alarm.id}
+            alarm={alarm}
+            onMarkerClick={onAlarmMarkerClick}
+          />
         ))}
         {trackers?.map((tracker) => (
           <TrackerMarker key={tracker.imei} tracker={tracker} />
@@ -490,6 +607,7 @@ export function AlarmMap({ alarms, trackers, guards, selectedGuardId, focusedAla
               key={guard.id}
               guard={guard}
               isSelected={guard.id === selectedGuardId}
+              onMarkerClick={onGuardMarkerClick}
             />
           ))}
       </Map>
