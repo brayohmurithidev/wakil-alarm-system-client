@@ -11,7 +11,7 @@ import {
 } from "@/lib/mapFilters";
 import {
   getStoredMapTheme,
-  resolveMapId,
+  resolveMapStyle,
   storeMapTheme,
 } from "@/lib/mapTheme";
 
@@ -92,7 +92,7 @@ export function LiveMap({
           guards={filteredGuards}
           focusedAlarmId={focusedAlarmId}
           focusedGuard={focusedGuard}
-          mapId={resolveMapId(mapTheme)}
+          mapStyle={resolveMapStyle(mapTheme)}
           onAlarmMarkerClick={onAlarmMarkerClick}
           onGuardMarkerClick={onGuardMarkerClick}
         />

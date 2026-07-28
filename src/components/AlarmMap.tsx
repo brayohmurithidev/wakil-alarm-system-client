@@ -1,9 +1,7 @@
 import {
-  AdvancedMarker,
   InfoWindow,
   Map,
   Marker,
-  useAdvancedMarkerRef,
   useMap,
   useMarkerRef,
 } from "@vis.gl/react-google-maps";
@@ -94,6 +92,43 @@ const GUARD_STATUS_COLOR: Record<GuardStatus, string> = {
   offline: "#6b7280",
 };
 
+// Same teardrop family as alarm markers (getMarkerIcon) so the two read as
+// related map objects, distinguished by colour and inner glyph (person vs
+// bell) rather than shape alone.
+function getGuardMarkerIcon(
+  status: GuardStatus,
+  isSelected: boolean,
+  isStale: boolean,
+): google.maps.Icon {
+  const color = GUARD_STATUS_COLOR[status];
+  const size = isSelected ? 50 : 42;
+  const opacity = status === "offline" ? 0.55 : isStale ? 0.75 : 1;
+  const ring = isSelected
+    ? `<path d="M12 1.3C7.8 1.3 4.3 4.7 4.3 9c0 5.6 7.7 13.6 7.7 13.6s7.7-8 7.7-13.6c0-4.3-3.5-7.7-7.7-7.7z" fill="none" stroke="#fbd63d" stroke-width="1.5"/>`
+    : "";
+
+  const svg = `
+    <svg width="44" height="44" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <filter id="s" x="-40%" y="-40%" width="180%" height="180%">
+          <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" flood-color="#000" flood-opacity="0.5"/>
+        </filter>
+      </defs>
+      <g opacity="${opacity}">
+        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"
+          fill="white" stroke="white" stroke-width="3.5" stroke-linejoin="round" filter="url(#s)"/>
+        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"
+          fill="${color}" stroke="white" stroke-width="1.5"/>
+        <circle cx="12" cy="8.6" r="1.6" fill="white"/>
+        <path d="M8.6 12.2c0-1.6 1.5-2.5 3.4-2.5s3.4 0.9 3.4 2.5v0.6H8.6v-0.6z" fill="white"/>
+        ${ring}
+      </g>
+    </svg>
+  `;
+
+  return svgIcon(svg, size, size / 2);
+}
+
 
 type AlarmMapProps = {
   alarms: Alarm[];
@@ -102,9 +137,9 @@ type AlarmMapProps = {
   selectedGuardId?: string | null;
   focusedAlarmId?: string | null;
   focusedGuard?: Guard | null;
-  // Overrides the env-derived default — lets callers switch between a
-  // dark- and light-styled Map ID (see src/lib/mapTheme.ts).
-  mapId?: string;
+  // A Google Maps JS style array (see src/lib/mapTheme.ts) — undefined
+  // means Google's standard default roadmap style.
+  mapStyle?: google.maps.MapTypeStyle[];
   // Fired when a marker itself is clicked, separate from focusedAlarmId /
   // focusedGuard (which pan the camera). Lets a caller sync panel-row
   // highlighting to a map click without moving the map — selecting a
@@ -245,31 +280,6 @@ function MapControls({
   );
 }
 
-// Google's Map ID is immutable once a map instance is created, so switching
-// dark/light styles (see src/lib/mapTheme.ts) has to remount `<Map>` via a
-// changing `key`. That would otherwise reset the viewport back to
-// `defaultCenter`/`defaultZoom` — this keeps a live ref of wherever the user
-// last panned/zoomed to so the parent can re-mount at the same spot instead.
-function MapViewportTracker({
-  onChange,
-}: {
-  onChange: (center: google.maps.LatLngLiteral, zoom: number) => void;
-}) {
-  const map = useMap();
-
-  useEffect(() => {
-    if (!map) return;
-    const listener = map.addListener("idle", () => {
-      const c = map.getCenter();
-      const z = map.getZoom();
-      if (c && z != null) onChange({ lat: c.lat(), lng: c.lng() }, z);
-    });
-    return () => listener.remove();
-  }, [map, onChange]);
-
-  return null;
-}
-
 // Google's map sits on a plain grey background until tiles have actually
 // painted - fires the callback once tiles for the current view are in, so
 // the caller can hide a loading overlay instead of flashing that grey.
@@ -382,13 +392,6 @@ function TrackerMarker({ tracker }: { tracker: TrackerLocation }) {
   );
 }
 
-function getInitials(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "?";
-  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
-  return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase();
-}
-
 function GuardMarker({
   guard,
   isSelected,
@@ -398,55 +401,23 @@ function GuardMarker({
   isSelected: boolean;
   onMarkerClick?: (guard: Guard) => void;
 }) {
-  const [markerRef, marker] = useAdvancedMarkerRef();
+  const [markerRef, marker] = useMarkerRef();
   const [isOpen, setIsOpen] = useState(false);
 
-  const ringColor =
-    guard.status === "offline" ? "#6b7280" : GUARD_STATUS_COLOR[guard.status];
-  const size = isSelected ? 54 : 44;
   const isStale = guard.status !== "offline" && !guard.locationUpdatedAt;
 
   return (
     <>
-      <AdvancedMarker
+      <Marker
         ref={markerRef}
         position={{ lat: guard.currentLatitude, lng: guard.currentLongitude }}
-        zIndex={isSelected ? 1000 : 0}
+        icon={getGuardMarkerIcon(guard.status, isSelected, isStale)}
+        zIndex={isSelected ? 1000 : undefined}
         onClick={() => {
           setIsOpen(true);
           onMarkerClick?.(guard);
         }}
-      >
-        <div
-          style={{
-            width: size,
-            height: size,
-            borderRadius: "10px",
-            border: `3px solid ${ringColor}`,
-            boxShadow: "0 2px 6px rgba(0,0,0,0.45)",
-            overflow: "hidden",
-            background: "#e5e7eb",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            outline: isSelected ? `2.5px solid #fbd63d` : "none",
-            outlineOffset: "2px",
-            opacity: guard.status === "offline" ? 0.55 : isStale ? 0.75 : 1,
-          }}
-        >
-          {guard.avatarUrl ? (
-            <img
-              src={guard.avatarUrl}
-              alt={guard.name}
-              style={{ width: "100%", height: "100%", objectFit: "cover" }}
-            />
-          ) : (
-            <span style={{ fontSize: size * 0.32, fontWeight: 600, color: "#374151" }}>
-              {getInitials(guard.name)}
-            </span>
-          )}
-        </div>
-      </AdvancedMarker>
+      />
       {isOpen && marker && (
         <InfoWindow anchor={marker} onCloseClick={() => setIsOpen(false)}>
           <div className="p-2">
@@ -504,7 +475,7 @@ export function AlarmMap({
   selectedGuardId,
   focusedAlarmId,
   focusedGuard,
-  mapId: mapIdOverride,
+  mapStyle,
   onAlarmMarkerClick,
   onGuardMarkerClick,
 }: AlarmMapProps) {
@@ -519,26 +490,7 @@ export function AlarmMap({
       (guard.currentLatitude == null || guard.currentLongitude == null),
   );
 
-  const mapId =
-    mapIdOverride ?? import.meta.env.VITE_GOOGLE_MAPS_MAP_ID ?? "DEMO_MAP_ID";
   const [tilesLoaded, setTilesLoaded] = useState(false);
-
-  // Google's Map ID can't change on a live map instance, so a theme switch
-  // remounts `<Map>` under a new `key`. This state survives that remount
-  // (it lives on the outer component, not inside `<Map>`) and seeds the
-  // next mount's defaultCenter/defaultZoom so the viewport doesn't jump
-  // back to Nairobi at zoom 12. A ref would be simpler but reading `.current`
-  // during render isn't allowed, so this uses state instead.
-  const [lastViewport, setLastViewport] = useState<{
-    center: google.maps.LatLngLiteral;
-    zoom: number;
-  } | null>(null);
-  const handleViewportChange = useCallback(
-    (c: google.maps.LatLngLiteral, zoom: number) => {
-      setLastViewport({ center: c, zoom });
-    },
-    [],
-  );
 
   return (
     <div className="relative flex h-full w-full min-h-0 flex-1 flex-col">
@@ -569,15 +521,13 @@ export function AlarmMap({
         </div>
       )}
       <Map
-        key={mapId}
-        defaultCenter={lastViewport?.center ?? center}
-        defaultZoom={lastViewport?.zoom ?? 12}
-        mapId={mapId}
+        defaultCenter={center}
+        defaultZoom={12}
+        styles={mapStyle}
         className="h-full w-full min-h-0 flex-1 rounded-lg"
         disableDefaultUI
         gestureHandling="greedy"
       >
-        <MapViewportTracker onChange={handleViewportChange} />
         <TilesLoadedHandler onLoaded={() => setTilesLoaded(true)} />
         <MapFocusHandler
           alarms={alarms}

@@ -10,18 +10,90 @@ export function storeMapTheme(theme: MapTheme): void {
   localStorage.setItem(MAP_THEME_KEY, theme);
 }
 
-// Guard markers render as `AdvancedMarker` (real avatar photos), which
-// requires a vector-rendered map tied to a Google Map ID — Google ignores a
-// client-side JS `styles` array whenever a Map ID is present, so a real
-// dark/light switch has to be two different Map IDs rather than one map ID
-// plus a style array. `VITE_GOOGLE_MAPS_MAP_ID_LIGHT` is optional: if ops
-// hasn't provisioned a light-styled Map ID in the Google Cloud console yet,
-// this falls back to the same (dark) Map ID so the toggle still works end
-// to end — it just won't look different until that second ID exists.
-export function resolveMapId(theme: MapTheme): string {
-  const darkMapId = import.meta.env.VITE_GOOGLE_MAPS_MAP_ID ?? "DEMO_MAP_ID";
-  const lightMapId = import.meta.env.VITE_GOOGLE_MAPS_MAP_ID_LIGHT?.trim();
+// A standard "night mode" Google Maps style. Google ignores a client-side
+// style array whenever a Map ID is set, so this only works because guard/
+// alarm markers use plain `Marker` icons rather than `AdvancedMarker` (which
+// requires a Map ID for vector rendering) — see AlarmMap.tsx.
+const DARK_MAP_STYLE: google.maps.MapTypeStyle[] = [
+  { elementType: "geometry", stylers: [{ color: "#1d2330" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#1d2330" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#8a94a6" }] },
+  {
+    featureType: "administrative",
+    elementType: "geometry.stroke",
+    stylers: [{ color: "#3a4257" }],
+  },
+  {
+    featureType: "administrative.locality",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#c5cbd8" }],
+  },
+  {
+    featureType: "poi",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#8a94a6" }],
+  },
+  {
+    featureType: "poi.park",
+    elementType: "geometry",
+    stylers: [{ color: "#243024" }],
+  },
+  {
+    featureType: "poi.park",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#5c7a5c" }],
+  },
+  {
+    featureType: "road",
+    elementType: "geometry",
+    stylers: [{ color: "#2c3347" }],
+  },
+  {
+    featureType: "road",
+    elementType: "geometry.stroke",
+    stylers: [{ color: "#1d2330" }],
+  },
+  {
+    featureType: "road",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#8a94a6" }],
+  },
+  {
+    featureType: "road.highway",
+    elementType: "geometry",
+    stylers: [{ color: "#3a4257" }],
+  },
+  {
+    featureType: "road.highway",
+    elementType: "geometry.stroke",
+    stylers: [{ color: "#1d2330" }],
+  },
+  {
+    featureType: "road.highway",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#c5cbd8" }],
+  },
+  {
+    featureType: "transit",
+    elementType: "geometry",
+    stylers: [{ color: "#2c3347" }],
+  },
+  {
+    featureType: "water",
+    elementType: "geometry",
+    stylers: [{ color: "#0f1420" }],
+  },
+  {
+    featureType: "water",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#4a5568" }],
+  },
+];
 
-  if (theme === "light" && lightMapId) return lightMapId;
-  return darkMapId;
+// Undefined = Google's standard default roadmap style (unchanged from what
+// the Dashboard has always shown).
+export function resolveMapStyle(
+  theme: MapTheme,
+): google.maps.MapTypeStyle[] | undefined {
+  return theme === "dark" ? DARK_MAP_STYLE : undefined;
 }
