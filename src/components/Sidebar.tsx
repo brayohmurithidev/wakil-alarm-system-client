@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "react-router-dom";
 
+import { useGetAlarms } from "@/api/hooks/useGetAlarms";
 import wakilGoldLogo from "@/assets/wakil-gold.png";
 import { Body, Button } from "@/components/ui";
 import {
@@ -16,6 +17,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { AlarmIcon } from "./icons/AlarmIcon";
 import { DashboardIcon } from "./icons/DashboardIcon";
 
+const NEEDS_ATTENTION_STATUSES = new Set(["pending", "open"]);
+
 const SIDEBAR_COLLAPSED_KEY = "sidebar:collapsed";
 
 type SidebarProps = {
@@ -27,6 +30,9 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
   const { t } = useTranslation();
   const location = useLocation();
   const { adminUser, logout } = useAuth();
+  // Cached under the same query key the Dashboard/Alarms pages use, so this
+  // doesn't add a second independent poll — React Query dedupes it.
+  const { data: alarms } = useGetAlarms();
 
   const [collapsed, setCollapsed] = useState(
     () => localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true",
@@ -35,6 +41,9 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
   useEffect(() => {
     localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(collapsed));
   }, [collapsed]);
+
+  const alarmsNeedingAttention =
+    alarms?.filter((a) => NEEDS_ATTENTION_STATUSES.has(a.status)).length ?? 0;
 
   const navItems = [
     {
@@ -46,6 +55,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
       label: t("sidebar.alarms", "Alarms"),
       path: "/alarms",
       icon: <AlarmIcon />,
+      badge: alarmsNeedingAttention > 0 ? alarmsNeedingAttention : undefined,
     },
     {
       label: t("sidebar.history", "History"),
@@ -95,7 +105,11 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
         >
           <div className="flex items-center justify-between p-6 border-b border-border">
             {!collapsed && (
-              <img src={wakilGoldLogo} alt="Wakil" className="h-16 w-auto" />
+              <img
+                src={wakilGoldLogo}
+                alt="Wakil Security"
+                className="h-10 w-auto"
+              />
             )}
             <Button
               variant="ghost"
@@ -139,7 +153,23 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
                       : "hover:bg-muted text-foreground"
                   }`}
                 >
-                  <span className="text-xl">{item.icon}</span>
+                  <span className="relative text-xl">
+                    {item.icon}
+                    {!!item.badge && (
+                      <span
+                        className={`absolute -right-1.5 -top-1.5 flex items-center justify-center rounded-full bg-alarm text-[10px] font-semibold text-white ${
+                          collapsed
+                            ? "h-2.5 w-2.5"
+                            : item.badge > 9
+                              ? "h-4 min-w-4 px-1"
+                              : "h-3.5 w-3.5"
+                        }`}
+                        aria-hidden="true"
+                      >
+                        {!collapsed && (item.badge > 9 ? "9+" : item.badge)}
+                      </span>
+                    )}
+                  </span>
                   {!collapsed && (
                     <Body
                       className={`font-medium ${
@@ -148,6 +178,11 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
                     >
                       {item.label}
                     </Body>
+                  )}
+                  {!collapsed && !!item.badge && (
+                    <span className="sr-only">
+                      {item.badge} alarms need attention
+                    </span>
                   )}
                 </Link>
               );
