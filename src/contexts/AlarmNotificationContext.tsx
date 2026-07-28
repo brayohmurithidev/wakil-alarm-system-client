@@ -9,11 +9,18 @@ import { apiUrl } from "@/config";
 import { useAuth } from "@/contexts/AuthContext";
 import { refreshAccessToken } from "@/lib/axios";
 
+export type RealtimeConnectionStatus =
+  | "connecting"
+  | "connected"
+  | "reconnecting"
+  | "offline";
+
 type AlarmNotificationContextType = {
   notificationQueue: Alarm[];
   currentNotification: Alarm | null;
   closeNotification: () => void;
   removeFromQueue: (alarmId: string) => void;
+  connectionStatus: RealtimeConnectionStatus;
 };
 
 const AlarmNotificationContext = createContext<
@@ -26,6 +33,8 @@ export const AlarmNotificationProvider: React.FC<{
   const queryClient = useQueryClient();
   const { isAuthenticated } = useAuth();
   const [notificationQueue, setNotificationQueue] = useState<Alarm[]>([]);
+  const [connectionStatus, setConnectionStatus] =
+    useState<RealtimeConnectionStatus>("connecting");
 
   // Drop any queued alarms the moment auth is lost, so the overlay (which
   // renders unconditionally off queue length, outside the route guard)
@@ -57,6 +66,8 @@ export const AlarmNotificationProvider: React.FC<{
     // this context) for a logged-out session.
     if (!isAuthenticated) return;
 
+    setConnectionStatus("connecting");
+
     // The socket now requires authentication — the server rejects any
     // handshake without a valid admin or guard JWT. `auth` is a callback
     // rather than a fixed object so every reconnect attempt reads the
@@ -66,21 +77,35 @@ export const AlarmNotificationProvider: React.FC<{
       auth: (cb) => cb({ token: localStorage.getItem("token") ?? "" }),
     });
 
+    // The browser's own connectivity signal — distinct from the socket's
+    // reconnect loop, which keeps retrying silently and never reports
+    // "offline" on its own (default reconnectionAttempts is infinite).
+    const handleOffline = () => setConnectionStatus("offline");
+    const handleOnline = () =>
+      setConnectionStatus(socket.connected ? "connected" : "reconnecting");
+    window.addEventListener("offline", handleOffline);
+    window.addEventListener("online", handleOnline);
+
     // An expired token surfaces here rather than as a normal disconnect.
     // Refresh once and let socket.io's own reconnection pick up the new
     // token via the callback above.
     socket.on("connect_error", () => {
+      if (navigator.onLine) setConnectionStatus("reconnecting");
       void refreshAccessToken().catch(() => {
         // Refresh failed — the axios interceptor's 401 handling owns the
         // logout path, so there is nothing useful to do here.
       });
     });
 
+    socket.on("disconnect", () => {
+      setConnectionStatus(navigator.onLine ? "reconnecting" : "offline");
+    });
 
     // Events emitted while the socket was down are not replayed by the
     // server, so refetch on every (re)connect rather than trusting the
     // cache to still be current.
     socket.on("connect", () => {
+      setConnectionStatus("connected");
       queryClient.invalidateQueries({ queryKey: [queryKeys.alarms] });
       queryClient.invalidateQueries({ queryKey: [queryKeys.guards] });
     });
@@ -177,6 +202,8 @@ export const AlarmNotificationProvider: React.FC<{
     });
 
     return () => {
+      window.removeEventListener("offline", handleOffline);
+      window.removeEventListener("online", handleOnline);
       socket.disconnect();
     };
   }, [queryClient, isAuthenticated]);
@@ -200,6 +227,7 @@ export const AlarmNotificationProvider: React.FC<{
         currentNotification,
         closeNotification,
         removeFromQueue,
+        connectionStatus,
       }}
     >
       {children}
