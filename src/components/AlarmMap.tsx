@@ -10,9 +10,16 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import type { TrackerLocation } from "@/api/hooks/useGetTrackerLocation";
-import type { Alarm, AlarmStatus, Guard, GuardStatus } from "@/api/types";
+import type { Alarm, AlarmStatus, Guard } from "@/api/types";
 import { LoaderIcon } from "@/components/icons";
 import { Avatar } from "@/components/ui/Avatar";
+import {
+  getConnectivityStatus,
+  getLocationFreshness,
+  getOperationalStatus,
+  type LocationFreshness,
+  type OperationalStatus,
+} from "@/lib/guardState";
 
 function timeAgo(iso: string): string {
   const secs = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
@@ -129,27 +136,41 @@ const getTrackerIcon = (): google.maps.Icon => {
   return svgIcon(svg, 42, 21);
 };
 
-const GUARD_STATUS_COLOR: Record<GuardStatus, string> = {
+// Secondary operational-state dot colour — deliberately distinct from the
+// guard-identity blue of the shield itself, and from the alarm-red/Wakil-gold
+// pair reserved for incidents/selection. Matches the same green/amber/grey
+// used for the panel's operational badge (GuardsPanel.tsx).
+const OPERATIONAL_DOT_COLOR: Record<OperationalStatus, string> = {
   available: "#22c55e",
-  busy: "#fbd63d",
-  offline: "#6b7280",
+  assigned: "#f59e0b",
+  offDuty: "#6b7280",
 };
 
 // A shield/security-badge silhouette — deliberately a different shape from
 // the alarm teardrop pin (not just a different colour) so the two are
 // distinguishable at a glance, per the guard-vs-alarm marker requirement.
+// The shield itself always stays guard blue (identity); operational state,
+// connectivity and location freshness are layered on as secondary
+// indicators rather than replacing it, per the guard-marker requirement.
 // Same 32x32-viewBox-with-padding approach as getMarkerIcon, for the same
 // reason (room for the selection halo).
 function getGuardMarkerIcon(
-  status: GuardStatus,
+  operational: OperationalStatus,
+  isConnected: boolean,
+  freshness: LocationFreshness,
   isSelected: boolean,
-  isStale: boolean,
 ): google.maps.Icon {
-  const isOnline = status !== "offline";
   const size = isSelected ? 50 : 44;
-  // "Offline guard (reduced emphasis)" per the marker-states requirement —
-  // reduced opacity on the same guard blue, not a different hue.
-  const opacity = !isOnline ? 0.45 : isStale ? 0.75 : 1;
+  // Reduced emphasis for off-duty or disconnected guards - opacity on the
+  // same guard blue, never a different hue, per the marker-states
+  // requirement. Off-duty (the guard's own choice) is muted further than a
+  // merely dropped connection.
+  const opacity = operational === "offDuty" ? 0.45 : !isConnected ? 0.65 : 1;
+
+  const staleRing =
+    freshness === "stale" && !isSelected
+      ? `<circle cx="16" cy="15" r="12" fill="none" stroke="#9ca3af" stroke-width="1.5" stroke-dasharray="2.5 2.5" opacity="0.8"/>`
+      : "";
 
   const svg = `
     <svg width="${size}" height="${size}" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
@@ -159,6 +180,7 @@ function getGuardMarkerIcon(
         </filter>
       </defs>
       ${isSelected ? selectionHalo(16, 15) : ""}
+      ${staleRing}
       <g filter="url(#s)">
         <path d="M16 5L23.5 8V14C23.5 20 20 24.7 16 26.5C12 24.7 8.5 20 8.5 14V8Z"
           fill="white" stroke="white" stroke-width="3.5" stroke-linejoin="round"/>
@@ -167,6 +189,7 @@ function getGuardMarkerIcon(
         fill="${GUARD_BLUE}" stroke="white" stroke-width="1.5" opacity="${opacity}"/>
       <path d="M12 15.2l2.6 2.6 5.4-5.6" fill="none" stroke="white" stroke-width="2"
         stroke-linecap="round" stroke-linejoin="round" opacity="${opacity}"/>
+      <circle cx="24" cy="6" r="4.2" fill="${OPERATIONAL_DOT_COLOR[operational]}" stroke="white" stroke-width="1.3"/>
     </svg>
   `;
 
@@ -456,14 +479,28 @@ function GuardMarker({
   const [markerRef, marker] = useMarkerRef();
   const [isOpen, setIsOpen] = useState(false);
 
-  const isStale = guard.status !== "offline" && !guard.locationUpdatedAt;
+  const operational = getOperationalStatus(guard);
+  const connectivity = getConnectivityStatus(guard);
+  const freshness = getLocationFreshness(guard);
+
+  const OPERATIONAL_LABEL: Record<OperationalStatus, string> = {
+    available: "Available",
+    assigned: "Assigned",
+    offDuty: "Off Duty",
+  };
+  const LOCATION_LABEL: Record<LocationFreshness, string> = {
+    live: "Live location",
+    recent: "Last location",
+    stale: "Location may be outdated",
+    none: "No location received yet",
+  };
 
   return (
     <>
       <Marker
         ref={markerRef}
         position={{ lat: guard.currentLatitude, lng: guard.currentLongitude }}
-        icon={getGuardMarkerIcon(guard.status, isSelected, isStale)}
+        icon={getGuardMarkerIcon(operational, guard.isConnected, freshness, isSelected)}
         zIndex={isSelected ? 1000 : undefined}
         onClick={() => {
           setIsOpen(true);
@@ -472,7 +509,7 @@ function GuardMarker({
       />
       {isOpen && marker && (
         <InfoWindow anchor={marker} onCloseClick={() => setIsOpen(false)}>
-          <div className="p-2">
+          <div className="p-2 min-w-[170px]">
             {isSelected && (
               <p className="text-xs font-bold mb-1" style={{ color: "#fbd63d" }}>
                 ASSIGNED GUARD
@@ -488,31 +525,25 @@ function GuardMarker({
               />
               <h3 className="font-bold text-lg" style={{ color: "#111827" }}>{guard.name}</h3>
             </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Status:
+            <p className="text-xs mt-1">
               <span
                 className="font-semibold"
-                style={{ color: GUARD_STATUS_COLOR[guard.status] }}
+                style={{ color: OPERATIONAL_DOT_COLOR[operational] }}
               >
-                {" "}{guard.status}
+                {OPERATIONAL_LABEL[operational]}
               </span>
             </p>
             <p className="text-xs text-gray-500">
-              {guard.status === "offline"
-                ? "Off duty"
-                : guard.status === "busy"
-                  ? "Engaged"
-                  : "Available"}
+              {connectivity === "connected" ? "Connected" : "Phone disconnected"}
+              {guard.lastActiveAt && ` · Last seen ${timeAgo(guard.lastActiveAt)}`}
             </p>
-            {guard.locationUpdatedAt ? (
-              <p className="text-xs text-gray-400 mt-1">
-                Updated {timeAgo(guard.locationUpdatedAt)}
-              </p>
-            ) : guard.lastActiveAt ? (
-              <p className="text-xs text-gray-400 mt-1">
-                Last seen {timeAgo(guard.lastActiveAt)}
-              </p>
-            ) : null}
+            <p
+              className="text-xs mt-1"
+              style={{ color: freshness === "stale" ? "#b45309" : "#6b7280" }}
+            >
+              {LOCATION_LABEL[freshness]}
+              {guard.locationUpdatedAt && ` · ${timeAgo(guard.locationUpdatedAt)}`}
+            </p>
           </div>
         </InfoWindow>
       )}
@@ -537,12 +568,6 @@ export function AlarmMap({
       ? { lat: alarms[0].latitude, lng: alarms[0].longitude }
       : DEFAULT_CENTER;
 
-  const locatingGuards = guards?.filter(
-    (guard) =>
-      guard.status !== "offline" &&
-      (guard.currentLatitude == null || guard.currentLongitude == null),
-  );
-
   const [tilesLoaded, setTilesLoaded] = useState(false);
 
   return (
@@ -550,27 +575,6 @@ export function AlarmMap({
       {!tilesLoaded && (
         <div className="absolute inset-0 z-[1000] flex items-center justify-center rounded-lg bg-card">
           <LoaderIcon className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      )}
-      {locatingGuards && locatingGuards.length > 0 && (
-        <div className="absolute top-3 right-3 z-[1000] max-w-56 rounded-lg border border-border bg-card/95 p-2 shadow-md">
-          <p className="mb-1 text-xs font-semibold text-muted-foreground">
-            Locating guard{locatingGuards.length > 1 ? "s" : ""}&hellip;
-          </p>
-          <ul className="space-y-1">
-            {locatingGuards.map((guard) => (
-              <li
-                key={guard.id}
-                className="flex items-center gap-2 text-xs text-foreground"
-              >
-                <span className="relative flex h-2 w-2 shrink-0">
-                  <span className="absolute h-full w-full animate-ping rounded-full bg-warning opacity-75" />
-                  <span className="relative h-2 w-2 rounded-full bg-warning" />
-                </span>
-                {guard.name}
-              </li>
-            ))}
-          </ul>
         </div>
       )}
       <Map
