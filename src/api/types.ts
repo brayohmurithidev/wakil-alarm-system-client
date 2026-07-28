@@ -45,8 +45,14 @@ export type Guard = {
   licenseNumber: string | null;
   bloodGroup: string | null;
   avatarUrl: string | null;
+  // Operational: available/busy, or offline only if the guard explicitly
+  // took themselves off duty. No longer affected by Socket.IO connectivity
+  // - see `isConnected` and src/lib/guardState.ts.
   status: GuardStatus;
   lastActiveAt: string | null;
+  // Live Socket.IO connectivity, tracked independently of `status`. A guard
+  // can be `available`/`busy` while disconnected (dead phone, no signal).
+  isConnected: boolean;
   currentLatitude: number | null;
   currentLongitude: number | null;
   locationUpdatedAt: string | null;

@@ -17,10 +17,12 @@ type AvatarProps = {
   guardStatus?: GuardStatus;
 };
 
-// Online = green, offline = gray. Available and busy are both "online".
+// Operational status, not connectivity: available = green, assigned/engaged
+// ("busy") = amber, off duty ("offline" - the guard's own choice, not a
+// dropped connection) = muted grey.
 const GUARD_RING_COLOR: Record<GuardStatus, string> = {
   available: "#22c55e",
-  busy:      "#22c55e",
+  busy:      "#f59e0b",
   offline:   "#6b7280",
 };
 

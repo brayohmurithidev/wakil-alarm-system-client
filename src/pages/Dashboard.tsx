@@ -20,18 +20,25 @@ import {
   getActiveAlarms,
   getAlarmBreakdown,
   getAverageResponseMinutes,
+  getConnectedPercentage,
   getLastAlarm,
-  getOnlinePercentage,
   getTotalAlarmsToday,
 } from "@/lib/dashboardMetrics";
+import { getActiveGuardAssignments } from "@/lib/guardAssignment";
+import { getOperationalStatus } from "@/lib/guardState";
 
-type GuardTab = "online" | "offline";
+type GuardTab = "available" | "assigned" | "offDuty" | "all";
 
 export function Dashboard() {
   const navigate = useNavigate();
   const { data: alarms, isLoading: alarmsLoading, error: alarmsError } = useGetAlarms();
   const { data: trackers } = useGetTrackerLocation();
-  const { data: guards, isLoading: guardsLoading } = useGetGuards();
+  const {
+    data: guards,
+    isLoading: guardsLoading,
+    error: guardsError,
+    refetch: refetchGuards,
+  } = useGetGuards();
   const { connectionStatus } = useAlarmNotification();
 
   // Drives panel-row-click panning (existing behaviour, unchanged).
@@ -42,7 +49,7 @@ export function Dashboard() {
   // must not move the map (see LiveMap/AlarmMap's onAlarmMarkerClick).
   const [selectedAlarmId, setSelectedAlarmId] = useState<string | null>(null);
   const [selectedGuard, setSelectedGuard] = useState<Guard | null>(null);
-  const [guardTab, setGuardTab] = useState<GuardTab>("online");
+  const [guardTab, setGuardTab] = useState<GuardTab>("available");
 
   const activeAlarms = useMemo(() => getActiveAlarms(alarms), [alarms]);
   const { unacknowledged, acknowledged } = useMemo(
@@ -50,20 +57,29 @@ export function Dashboard() {
     [activeAlarms],
   );
 
-  const onlineGuards = useMemo(
-    () => guards?.filter((g) => g.status !== "offline") ?? [],
+  // Operational status only - never derived from connectivity. See
+  // src/lib/guardState.ts for why these are kept independent.
+  const availableGuards = useMemo(
+    () => guards?.filter((g) => getOperationalStatus(g) === "available") ?? [],
     [guards],
   );
-  const offlineGuards = useMemo(
-    () => guards?.filter((g) => g.status === "offline") ?? [],
+  const assignedGuards = useMemo(
+    () => guards?.filter((g) => getOperationalStatus(g) === "assigned") ?? [],
     [guards],
   );
-  const onlinePercentage = getOnlinePercentage(guards);
+  // guardId -> the active alarm they're currently attending, using the full
+  // ACTIVE_STATUSES set (the guard list API's own `alarms` relation only
+  // includes pending/open, which would under-report "assigned" guards).
+  const assignmentByGuardId = useMemo(
+    () => getActiveGuardAssignments(alarms ?? []),
+    [alarms],
+  );
+  const connectedPercentage = getConnectedPercentage(guards);
   const avgResponseMinutes = getAverageResponseMinutes(alarms);
   const avgResponseLabel = formatResponseTime(avgResponseMinutes);
   const lastAlarm = getLastAlarm(alarms);
   const totalAlarmsToday = getTotalAlarmsToday(alarms);
-  const guardsEngaged = guards?.filter((g) => g.status === "busy").length ?? 0;
+  const guardsEngaged = assignedGuards.length;
 
   const isDataStale = connectionStatus !== "connected";
 
@@ -122,11 +138,11 @@ export function Dashboard() {
                 actionLabel="View alarms"
               />
               <DashboardMetricCard
-                label="Guards Online"
+                label="Available Guards"
                 icon={<ShieldUser size={18} />}
                 accent="guard"
-                value={onlineGuards.length}
-                detail={`${offlineGuards.length} offline`}
+                value={availableGuards.length}
+                detail={`${assignedGuards.length} assigned`}
                 onClick={() => navigate("/guards")}
                 actionLabel="View guards"
               />
@@ -136,8 +152,8 @@ export function Dashboard() {
                 accent="info"
                 value={guards?.length ?? 0}
                 detail={
-                  onlinePercentage !== null
-                    ? `${onlinePercentage}% online`
+                  connectedPercentage !== null
+                    ? `${connectedPercentage}% connected`
                     : "Unavailable"
                 }
                 onClick={() => navigate("/guards")}
@@ -190,13 +206,15 @@ export function Dashboard() {
               isStale={isDataStale}
             />
             <GuardsPanel
-              onlineGuards={onlineGuards}
-              offlineGuards={offlineGuards}
+              guards={guards ?? []}
               isLoading={guardsLoading}
+              isError={!!guardsError}
+              onRetry={() => void refetchGuards()}
               guardTab={guardTab}
               onTabChange={setGuardTab}
               selectedGuardId={selectedGuard?.id ?? null}
               onSelectGuard={handlePanelGuardClick}
+              assignmentByGuardId={assignmentByGuardId}
             />
           </div>
         </div>

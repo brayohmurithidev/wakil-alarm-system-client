@@ -56,10 +56,13 @@ export function formatResponseTime(minutes: number | null): string | null {
   return `${String(whole).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
-export function getOnlinePercentage(guards: Guard[] | undefined): number | null {
+// Connectivity, not availability - a guard can be operationally available
+// while disconnected. Keep this labelled as "connected" wherever it's shown;
+// see src/lib/guardState.ts for the operational/connectivity/location split.
+export function getConnectedPercentage(guards: Guard[] | undefined): number | null {
   if (!guards || guards.length === 0) return null;
-  const online = guards.filter((g) => g.status !== "offline").length;
-  return Math.round((online / guards.length) * 100);
+  const connected = guards.filter((g) => g.isConnected).length;
+  return Math.round((connected / guards.length) * 100);
 }
 
 export function getTotalAlarmsToday(alarms: Alarm[] | undefined): number {

@@ -31,6 +31,7 @@ import {
 import { useReverseGeocode } from "@/hooks/useReverseGeocode";
 import { formatDistanceKm, haversineKm } from "@/lib/distance";
 import { getActiveGuardAssignments } from "@/lib/guardAssignment";
+import { getOperationalStatus } from "@/lib/guardState";
 
 // Radix Select rejects an empty-string item value, so unassigning a guard
 // needs an explicit sentinel item rather than a clearable empty state.
@@ -439,22 +440,30 @@ export function AlarmDetail() {
                     {t("alarmDetail.assignedGuard", "Assigned Guard")}
                   </Body>
                   {alarm.guard && (
-                    <div className="flex items-center gap-3 mb-3">
-                      <Avatar
-                        name={alarm.guard.name}
-                        imageUrl={alarm.guard.avatarUrl}
-                        variant="guard"
-                        size="md"
-                        guardStatus={alarm.guard.status}
-                      />
-                      <div>
-                        <Body className="font-medium">
-                          {alarm.guard.name}
-                        </Body>
-                        <Body size="sm" className="text-muted-foreground">
-                          {alarm.guard.phone}
-                        </Body>
+                    <div className="mb-3">
+                      <div className="flex items-center gap-3">
+                        <Avatar
+                          name={alarm.guard.name}
+                          imageUrl={alarm.guard.avatarUrl}
+                          variant="guard"
+                          size="md"
+                          guardStatus={alarm.guard.status}
+                        />
+                        <div>
+                          <Body className="font-medium">
+                            {alarm.guard.name}
+                          </Body>
+                          <Body size="sm" className="text-muted-foreground">
+                            {alarm.guard.phone}
+                          </Body>
+                        </div>
                       </div>
+                      {!alarm.guard.isConnected && (
+                        <p className="mt-2 rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning">
+                          This guard is currently disconnected and may not
+                          receive the assignment immediately.
+                        </p>
+                      )}
                     </div>
                   )}
                   <div className="flex items-center gap-2">
@@ -514,16 +523,29 @@ export function AlarmDetail() {
                               const isAssignedElsewhere =
                                 assignedAlarmId != null &&
                                 assignedAlarmId !== alarm.id;
+                              // Off duty is the guard's own choice and the
+                              // backend rejects it outright - worth disabling
+                              // up front. A merely disconnected guard stays
+                              // selectable (connectivity never gates
+                              // eligibility), just labelled so the dispatcher
+                              // can make an informed call.
+                              const isOffDuty =
+                                getOperationalStatus(guard) === "offDuty";
                               return (
                                 <SelectItem
                                   key={guard.id}
                                   value={guard.id}
-                                  disabled={isAssignedElsewhere}
+                                  disabled={isAssignedElsewhere || isOffDuty}
                                 >
                                   {guard.name}
                                   {distanceKm != null &&
                                     ` — ${formatDistanceKm(distanceKm)}`}
                                   {isAssignedElsewhere && " (Assigned)"}
+                                  {isOffDuty && " (Off Duty)"}
+                                  {!isOffDuty &&
+                                    !isAssignedElsewhere &&
+                                    !guard.isConnected &&
+                                    " (Disconnected)"}
                                 </SelectItem>
                               );
                             })}

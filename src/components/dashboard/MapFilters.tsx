@@ -27,10 +27,13 @@ const ASSIGNMENT_OPTIONS: { value: AssignmentFilter; label: string }[] = [
   { value: "unassigned", label: "Unassigned only" },
 ];
 
+// Operational labels, not connectivity - "busy"/"offline" are the API's
+// enum values, but this filters guards by operational status (available/
+// assigned/off duty), matching the Guards panel and map marker language.
 const GUARD_STATUS_LABEL: Record<GuardStatus, string> = {
   available: "Available",
-  busy: "Busy",
-  offline: "Offline",
+  busy: "Assigned",
+  offline: "Off Duty",
 };
 
 type MapFiltersProps = {
