@@ -5,8 +5,8 @@ import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { z } from "zod";
 
 import { useResetPassword } from "@/api/hooks/useResetPassword";
-import { notify } from "@/components/Alert/notify";
 import wakilGoldLogo from "@/assets/wakil-gold.png";
+import { notify } from "@/components/Alert/notify";
 import {
   Body,
   Button,

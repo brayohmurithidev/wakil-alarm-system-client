@@ -40,9 +40,13 @@ export const AlarmNotificationProvider: React.FC<{
   // renders unconditionally off queue length, outside the route guard)
   // doesn't stay open on top of the login screen after logout.
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (isAuthenticated) return;
+
+    const clearQueueTimer = window.setTimeout(() => {
       setNotificationQueue([]);
-    }
+    }, 0);
+
+    return () => window.clearTimeout(clearQueueTimer);
   }, [isAuthenticated]);
 
   useEffect(() => {
@@ -66,7 +70,9 @@ export const AlarmNotificationProvider: React.FC<{
     // this context) for a logged-out session.
     if (!isAuthenticated) return;
 
-    setConnectionStatus("connecting");
+    const connectingTimer = window.setTimeout(() => {
+      setConnectionStatus("connecting");
+    }, 0);
 
     // The socket now requires authentication — the server rejects any
     // handshake without a valid admin or guard JWT. `auth` is a callback
@@ -105,6 +111,7 @@ export const AlarmNotificationProvider: React.FC<{
     // server, so refetch on every (re)connect rather than trusting the
     // cache to still be current.
     socket.on("connect", () => {
+      window.clearTimeout(connectingTimer);
       setConnectionStatus("connected");
       queryClient.invalidateQueries({ queryKey: [queryKeys.alarms] });
       queryClient.invalidateQueries({ queryKey: [queryKeys.guards] });
@@ -202,6 +209,7 @@ export const AlarmNotificationProvider: React.FC<{
     });
 
     return () => {
+      window.clearTimeout(connectingTimer);
       window.removeEventListener("offline", handleOffline);
       window.removeEventListener("online", handleOnline);
       socket.disconnect();

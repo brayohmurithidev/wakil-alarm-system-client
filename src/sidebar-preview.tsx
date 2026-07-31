@@ -2,8 +2,8 @@ import "@/index.css";
 
 import { createRoot } from "react-dom/client";
 
-import { AlarmMap } from "@/components/AlarmMap";
 import type { Alarm } from "@/api/types";
+import { AlarmMap } from "@/components/AlarmMap";
 
 const alarms: Alarm[] = [
   {

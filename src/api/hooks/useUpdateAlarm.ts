@@ -4,7 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import axiosInstance from "@/lib/axios";
 
 import { queryKeys } from "../queryKeys";
-import type { Alarm, AlarmStatus, Guard } from "../types";
+import type { AlarmStatus, Guard } from "../types";
 
 export type UpdateAlarmParams = {
   id: string;

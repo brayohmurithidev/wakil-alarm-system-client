@@ -7,7 +7,6 @@ import { useNavigate } from "react-router-dom";
 import { useGetAlarms } from "@/api/hooks/useGetAlarms";
 import { useGetGuards } from "@/api/hooks/useGetGuards";
 import { useUpdateAlarm } from "@/api/hooks/useUpdateAlarm";
-import type { AlarmStatus } from "@/api/types";
 import { AlarmStatusBadge } from "@/components/AlarmStatusBadge";
 import { notify } from "@/components/Alert/notify";
 import { FormInput } from "@/components/FormGroup/FormGroup";
@@ -64,11 +63,6 @@ export function History() {
       notify(errorMessage, { type: "error" });
     },
   });
-
-  const handleStatusChange = (alarmId: string, status: string) => {
-    setUpdatingAlarmId(alarmId);
-    updateAlarm({ id: alarmId, status: status as AlarmStatus });
-  };
 
   const handleGuardAssign = (alarmId: string, guardId: string) => {
     setUpdatingAlarmId(alarmId);

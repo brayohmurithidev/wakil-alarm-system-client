@@ -6,8 +6,8 @@ import { Link } from "react-router-dom";
 import { z } from "zod";
 
 import { useForgotPassword } from "@/api/hooks/useForgotPassword";
-import { notify } from "@/components/Alert/notify";
 import wakilGoldLogo from "@/assets/wakil-gold.png";
+import { notify } from "@/components/Alert/notify";
 import {
   Body,
   Button,
