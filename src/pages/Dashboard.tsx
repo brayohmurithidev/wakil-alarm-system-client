@@ -10,6 +10,7 @@ import { ActiveAlarmsPanel } from "@/components/dashboard/ActiveAlarmsPanel";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DashboardMetricCard } from "@/components/dashboard/DashboardMetricCard";
 import { GuardsPanel } from "@/components/dashboard/GuardsPanel";
+import { IncidentTimeline } from "@/components/dashboard/IncidentTimeline";
 import { LiveMap } from "@/components/dashboard/LiveMap";
 import { OperationalSummary } from "@/components/dashboard/OperationalSummary";
 import { QuickActionsPanel } from "@/components/dashboard/QuickActionsPanel";
@@ -20,7 +21,7 @@ import {
   getActiveAlarms,
   getAlarmBreakdown,
   getAverageResponseMinutes,
-  getConnectedPercentage,
+  getConnectedGuardCount,
   getLastAlarm,
   getTotalAlarmsToday,
 } from "@/lib/dashboardMetrics";
@@ -31,7 +32,12 @@ type GuardTab = "available" | "assigned" | "offDuty" | "all";
 
 export function Dashboard() {
   const navigate = useNavigate();
-  const { data: alarms, isLoading: alarmsLoading, error: alarmsError } = useGetAlarms();
+  const {
+    data: alarms,
+    isLoading: alarmsLoading,
+    error: alarmsError,
+    refetch: refetchAlarms,
+  } = useGetAlarms();
   const { data: trackers } = useGetTrackerLocation();
   const {
     data: guards,
@@ -74,7 +80,7 @@ export function Dashboard() {
     () => getActiveGuardAssignments(alarms ?? []),
     [alarms],
   );
-  const connectedPercentage = getConnectedPercentage(guards);
+  const connectedGuards = getConnectedGuardCount(guards);
   const avgResponseMinutes = getAverageResponseMinutes(alarms);
   const avgResponseLabel = formatResponseTime(avgResponseMinutes);
   const lastAlarm = getLastAlarm(alarms);
@@ -109,16 +115,20 @@ export function Dashboard() {
     setSelectedGuard(guard);
   };
 
+  const refreshLiveData = () => {
+    void Promise.all([refetchAlarms(), refetchGuards()]);
+  };
+
   return (
     <div className="flex h-screen w-full flex-col bg-background">
       <DashboardHeader />
 
       <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 pb-6 sm:px-8">
         {/* ── Metric cards ── */}
-        <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {alarmsLoading ? (
             Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-[76px] w-full rounded-lg" />
+              <Skeleton key={i} className="h-[66px] w-full rounded-lg" />
             ))
           ) : (
             <>
@@ -152,8 +162,8 @@ export function Dashboard() {
                 accent="info"
                 value={guards?.length ?? 0}
                 detail={
-                  connectedPercentage !== null
-                    ? `${connectedPercentage}% connected`
+                  connectedGuards !== null
+                    ? `${connectedGuards} / ${guards?.length ?? 0} connected`
                     : "Unavailable"
                 }
                 onClick={() => navigate("/guards")}
@@ -164,14 +174,14 @@ export function Dashboard() {
                 icon={<Clock size={18} />}
                 accent="success"
                 value={avgResponseLabel ?? "Unavailable"}
-                detail={avgResponseLabel ? "min:sec" : "No acknowledged alarms yet"}
+                detail={avgResponseLabel ? "Acknowledgement average" : "No acknowledged alarms yet"}
               />
             </>
           )}
         </div>
 
         {/* ── Map + side panels ── */}
-        <div className="flex flex-col gap-4 xl:h-[620px] xl:flex-row">
+        <div className="flex flex-col gap-4 xl:h-[700px] xl:flex-row">
           {/*
             Google Maps' internal DOM sizes itself with `height: 100%` all
             the way down, which only resolves reliably against an ancestor
@@ -182,7 +192,7 @@ export function Dashboard() {
             an explicit `xl:h-[620px]`, so `h-full` there is the same
             explicit-height case and works.
           */}
-          <div className="flex h-[420px] flex-col xl:h-full xl:flex-1">
+          <div className="flex h-[500px] flex-col sm:h-[560px] xl:h-full xl:flex-1">
             <LiveMap
               alarms={activeAlarms}
               trackers={trackers}
@@ -193,12 +203,14 @@ export function Dashboard() {
               focusedGuard={focusedGuard}
               onAlarmMarkerClick={handleMarkerAlarmClick}
               onGuardMarkerClick={handleMarkerGuardClick}
+              onRefresh={refreshLiveData}
             />
           </div>
 
           <div className="flex w-full flex-col gap-4 xl:h-full xl:w-72 min-[1440px]:w-80">
             <ActiveAlarmsPanel
               alarms={activeAlarms}
+              guards={guards ?? []}
               isLoading={alarmsLoading}
               isError={!!alarmsError}
               selectedAlarmId={selectedAlarmId}
@@ -230,6 +242,8 @@ export function Dashboard() {
             />
           </div>
         </div>
+
+        <IncidentTimeline alarms={alarms ?? []} guards={guards ?? []} />
       </div>
     </div>
   );

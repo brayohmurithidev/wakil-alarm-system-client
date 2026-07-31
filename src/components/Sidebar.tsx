@@ -97,7 +97,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
         />
       )}
 
-      <TooltipProvider>
+      <TooltipProvider delayDuration={0} skipDelayDuration={0}>
         <div
           className={`fixed inset-y-0 left-0 z-50 flex h-screen flex-col bg-card border-r border-border transition-[width,transform] duration-200 lg:static lg:translate-x-0 ${
             mobileOpen ? "translate-x-0" : "-translate-x-full"
@@ -145,6 +145,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
                 <Link
                   to={item.path}
                   onClick={onMobileClose}
+                  aria-label={item.label}
                   className={`flex items-center gap-3 rounded-lg transition-colors ${
                     collapsed ? "justify-center px-0 py-3" : "px-4 py-3"
                   } ${
@@ -187,14 +188,12 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
                 </Link>
               );
 
-              if (!collapsed) {
-                return <div key={item.path}>{link}</div>;
-              }
-
               return (
                 <Tooltip key={item.path}>
                   <TooltipTrigger asChild>{link}</TooltipTrigger>
-                  <TooltipContent side="right">{item.label}</TooltipContent>
+                  <TooltipContent side="right" sideOffset={8}>
+                    {item.label}
+                  </TooltipContent>
                 </Tooltip>
               );
             })}

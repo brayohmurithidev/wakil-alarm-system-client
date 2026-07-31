@@ -1,4 +1,5 @@
 import { MapPin, RotateCcw } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import type { Guard } from "@/api/types";
@@ -7,15 +8,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   type ConnectivityStatus,
   getConnectivityStatus,
-  getLocationFreshness,
   getOperationalStatus,
-  type LocationFreshness,
   type OperationalStatus,
 } from "@/lib/guardState";
 import { cn } from "@/lib/utils";
 
 function timeAgo(iso: string): string {
-  const secs = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  const timestamp = new Date(iso).getTime();
+  if (!Number.isFinite(timestamp)) return "unavailable";
+  const secs = Math.max(0, Math.floor((Date.now() - timestamp) / 1000));
   if (secs < 60) return "just now";
   if (secs < 3600) return `${Math.floor(secs / 60)}m ago`;
   if (secs < 86400) return `${Math.floor(secs / 3600)}h ago`;
@@ -28,22 +29,26 @@ const OPERATIONAL_STYLE: Record<OperationalStatus, { label: string; className: s
   offDuty: { label: "Off Duty", className: "bg-muted text-muted-foreground" },
 };
 
-function locationLabel(
-  freshness: LocationFreshness,
-  locationUpdatedAt: string | null,
-): string {
-  switch (freshness) {
-    case "live":
-      return "Live location";
-    case "recent":
-      return locationUpdatedAt ? `Last location · ${timeAgo(locationUpdatedAt)}` : "Last location";
-    case "stale":
-      return locationUpdatedAt
-        ? `Location may be outdated · ${timeAgo(locationUpdatedAt)}`
-        : "Location may be outdated";
-    case "none":
-      return "No location received yet";
-  }
+function locationAgeLabel(locationUpdatedAt: string | null, now: number | null): string {
+  if (!locationUpdatedAt) return "No location received yet";
+  if (now === null) return "Updating location age…";
+  const timestamp = new Date(locationUpdatedAt).getTime();
+  if (!Number.isFinite(timestamp)) return "Location update unavailable";
+  const seconds = Math.max(0, Math.floor((now - timestamp) / 1_000));
+  if (seconds < 60) return `Updated ${seconds} sec ago`;
+  if (seconds < 3_600) return `Updated ${Math.floor(seconds / 60)} min ago`;
+  return `Updated ${Math.floor(seconds / 3_600)} hr ago`;
+}
+
+function locationAgeClass(locationUpdatedAt: string | null, now: number | null): string {
+  if (!locationUpdatedAt) return "text-muted-foreground";
+  if (now === null) return "text-muted-foreground";
+  const timestamp = new Date(locationUpdatedAt).getTime();
+  if (!Number.isFinite(timestamp)) return "text-muted-foreground";
+  const seconds = Math.max(0, (now - timestamp) / 1_000);
+  if (seconds < 30) return "text-operational-success";
+  if (seconds <= 120) return "text-operational-warning";
+  return "text-alarm";
 }
 
 type GuardTab = "available" | "assigned" | "offDuty" | "all";
@@ -80,6 +85,16 @@ export function GuardsPanel({
   assignmentByGuardId,
 }: GuardsPanelProps) {
   const navigate = useNavigate();
+  const [now, setNow] = useState<number | null>(null);
+
+  useEffect(() => {
+    const initialTimer = window.setTimeout(() => setNow(Date.now()), 0);
+    const timer = window.setInterval(() => setNow(Date.now()), 15_000);
+    return () => {
+      window.clearTimeout(initialTimer);
+      window.clearInterval(timer);
+    };
+  }, []);
 
   const counts = {
     available: 0,
@@ -162,7 +177,6 @@ export function GuardsPanel({
             const isSelected = selectedGuardId === guard.id;
             const operational = getOperationalStatus(guard);
             const connectivity: ConnectivityStatus = getConnectivityStatus(guard);
-            const freshness = getLocationFreshness(guard);
             const assignedAlarmId = assignmentByGuardId.get(guard.id);
 
             return (
@@ -202,29 +216,41 @@ export function GuardsPanel({
                   </div>
 
                   <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
-                    <span
-                      className={cn(
-                        "h-1.5 w-1.5 rounded-full shrink-0",
-                        connectivity === "connected" ? "bg-operational-success" : "bg-muted-foreground",
-                      )}
-                    />
-                    {connectivity === "connected" ? "Connected" : "Phone disconnected"}
-                    {guard.lastActiveAt && (
-                      <span className="truncate">
-                        · Last seen {timeAgo(guard.lastActiveAt)}
-                      </span>
+                    {operational === "offDuty" ? (
+                      <>
+                        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground" />
+                        <span>Off Duty</span>
+                        {guard.lastActiveAt && (
+                          <span className="truncate">· Last active {timeAgo(guard.lastActiveAt)}</span>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <span
+                          className={cn(
+                            "h-1.5 w-1.5 shrink-0 rounded-full",
+                            connectivity === "connected"
+                              ? "bg-operational-success"
+                              : "bg-muted-foreground",
+                          )}
+                        />
+                        {connectivity === "connected" ? "Live" : "Phone disconnected"}
+                        {guard.lastActiveAt && (
+                          <span className="truncate">· Last active {timeAgo(guard.lastActiveAt)}</span>
+                        )}
+                      </>
                     )}
                   </p>
 
                   <p
                     className={cn(
                       "mt-0.5 flex items-center gap-1 text-xs",
-                      freshness === "stale" ? "text-warning" : "text-muted-foreground",
+                      locationAgeClass(guard.locationUpdatedAt, now),
                     )}
                   >
                     <MapPin size={10} className="shrink-0" />
                     <span className="truncate">
-                      {locationLabel(freshness, guard.locationUpdatedAt)}
+                      {locationAgeLabel(guard.locationUpdatedAt, now)}
                     </span>
                   </p>
 

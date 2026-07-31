@@ -50,19 +50,23 @@ export function getAverageResponseMinutes(
 }
 
 export function formatResponseTime(minutes: number | null): string | null {
-  if (minutes === null) return null;
-  const whole = Math.floor(minutes);
-  const seconds = Math.round((minutes - whole) * 60);
-  return `${String(whole).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  if (minutes === null || !Number.isFinite(minutes) || minutes < 0) return null;
+  const totalSeconds = Math.round(minutes * 60);
+  const hours = Math.floor(totalSeconds / 3_600);
+  const wholeMinutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (hours > 0) {
+    return `${hours}h ${Math.floor((totalSeconds % 3_600) / 60)}m`;
+  }
+  return `${wholeMinutes}m ${String(seconds).padStart(2, "0")}s`;
 }
 
 // Connectivity, not availability - a guard can be operationally available
-// while disconnected. Keep this labelled as "connected" wherever it's shown;
-// see src/lib/guardState.ts for the operational/connectivity/location split.
-export function getConnectedPercentage(guards: Guard[] | undefined): number | null {
-  if (!guards || guards.length === 0) return null;
-  const connected = guards.filter((g) => g.isConnected).length;
-  return Math.round((connected / guards.length) * 100);
+// while disconnected. Absolute counts scan faster than percentages in the
+// control room and do not blur this distinction.
+export function getConnectedGuardCount(guards: Guard[] | undefined): number | null {
+  if (!guards) return null;
+  return guards.filter((guard) => guard.isConnected).length;
 }
 
 export function getTotalAlarmsToday(alarms: Alarm[] | undefined): number {

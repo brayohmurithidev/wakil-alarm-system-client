@@ -27,6 +27,7 @@ type LiveMapProps = {
   focusedGuard?: Guard | null;
   onAlarmMarkerClick?: (alarmId: string) => void;
   onGuardMarkerClick?: (guard: Guard) => void;
+  onRefresh?: () => void;
 };
 
 export function LiveMap({
@@ -39,6 +40,7 @@ export function LiveMap({
   focusedGuard,
   onAlarmMarkerClick,
   onGuardMarkerClick,
+  onRefresh,
 }: LiveMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -88,6 +90,7 @@ export function LiveMap({
         onToggleMapTheme={toggleMapTheme}
         isFullscreen={isFullscreen}
         onToggleFullscreen={toggleFullscreen}
+        onRefresh={onRefresh}
       />
       <div className="flex min-h-0 flex-1 flex-col p-2">
         <AlarmMap

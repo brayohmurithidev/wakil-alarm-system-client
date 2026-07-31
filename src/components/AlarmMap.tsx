@@ -136,15 +136,36 @@ const getTrackerIcon = (): google.maps.Icon => {
   return svgIcon(svg, 42, 21);
 };
 
-// Secondary operational-state dot colour — deliberately distinct from the
-// guard-identity blue of the shield itself, and from the alarm-red/Wakil-gold
-// pair reserved for incidents/selection. Matches the same green/amber/grey
-// used for the panel's operational badge (GuardsPanel.tsx).
-const OPERATIONAL_DOT_COLOR: Record<OperationalStatus, string> = {
+type GuardMarkerState =
+  | "available"
+  | "assigned"
+  | "responding"
+  | "emergency"
+  | "disconnected";
+
+const GUARD_MARKER_COLOR: Record<GuardMarkerState, string> = {
   available: "#22c55e",
-  assigned: "#f59e0b",
-  offDuty: "#6b7280",
+  assigned: GUARD_BLUE,
+  responding: "#f59e0b",
+  emergency: ALARM_RED,
+  disconnected: "#9ca3af",
 };
+
+function getGuardMarkerState(guard: Guard, assignedAlarm?: Alarm): GuardMarkerState {
+  if (!guard.isConnected || getOperationalStatus(guard) === "offDuty") {
+    return "disconnected";
+  }
+  if (
+    assignedAlarm?.status === "pending" ||
+    assignedAlarm?.status === "open" ||
+    assignedAlarm?.status === "acknowledged"
+  ) {
+    return "emergency";
+  }
+  if (assignedAlarm?.status === "guard_acknowledged") return "responding";
+  if (assignedAlarm || getOperationalStatus(guard) === "assigned") return "assigned";
+  return "available";
+}
 
 // A shield/security-badge silhouette — deliberately a different shape from
 // the alarm teardrop pin (not just a different colour) so the two are
@@ -155,17 +176,15 @@ const OPERATIONAL_DOT_COLOR: Record<OperationalStatus, string> = {
 // Same 32x32-viewBox-with-padding approach as getMarkerIcon, for the same
 // reason (room for the selection halo).
 function getGuardMarkerIcon(
-  operational: OperationalStatus,
-  isConnected: boolean,
+  markerState: GuardMarkerState,
   freshness: LocationFreshness,
   isSelected: boolean,
 ): google.maps.Icon {
   const size = isSelected ? 50 : 44;
-  // Reduced emphasis for off-duty or disconnected guards - opacity on the
-  // same guard blue, never a different hue, per the marker-states
-  // requirement. Off-duty (the guard's own choice) is muted further than a
-  // merely dropped connection.
-  const opacity = operational === "offDuty" ? 0.45 : !isConnected ? 0.65 : 1;
+  const disconnected = markerState === "disconnected";
+  const fill = disconnected ? "#1f2937" : GUARD_MARKER_COLOR[markerState];
+  const stroke = disconnected ? GUARD_MARKER_COLOR.disconnected : "white";
+  const opacity = disconnected ? 0.72 : 1;
 
   const staleRing =
     freshness === "stale" && !isSelected
@@ -181,15 +200,14 @@ function getGuardMarkerIcon(
       </defs>
       ${isSelected ? selectionHalo(16, 15) : ""}
       ${staleRing}
-      <g filter="url(#s)">
+      <g filter="url(#s)" opacity="${disconnected ? 0.45 : 1}">
         <path d="M16 5L23.5 8V14C23.5 20 20 24.7 16 26.5C12 24.7 8.5 20 8.5 14V8Z"
-          fill="white" stroke="white" stroke-width="3.5" stroke-linejoin="round"/>
+          fill="${disconnected ? "none" : "white"}" stroke="${stroke}" stroke-width="3.5" stroke-linejoin="round"/>
       </g>
       <path d="M16 5L23.5 8V14C23.5 20 20 24.7 16 26.5C12 24.7 8.5 20 8.5 14V8Z"
-        fill="${GUARD_BLUE}" stroke="white" stroke-width="1.5" opacity="${opacity}"/>
+        fill="${fill}" stroke="${stroke}" stroke-width="${disconnected ? 2.2 : 1.5}" opacity="${opacity}"/>
       <path d="M12 15.2l2.6 2.6 5.4-5.6" fill="none" stroke="white" stroke-width="2"
-        stroke-linecap="round" stroke-linejoin="round" opacity="${opacity}"/>
-      <circle cx="24" cy="6" r="4.2" fill="${OPERATIONAL_DOT_COLOR[operational]}" stroke="white" stroke-width="1.3"/>
+        stroke-linecap="round" stroke-linejoin="round" opacity="${disconnected ? 0.35 : opacity}"/>
     </svg>
   `;
 
@@ -274,6 +292,33 @@ function MapFocusHandler({
   return null;
 }
 
+// Google Maps usually tracks its host size, but fullscreen and responsive
+// dashboard height changes can happen without a window resize. Explicitly
+// notify it so tiles and controls remain aligned with the visible container.
+function MapResizeHandler() {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!map || typeof ResizeObserver === "undefined") return;
+    const container = map.getDiv();
+    let frame: number | null = null;
+    const observer = new ResizeObserver(() => {
+      if (frame !== null) window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        google.maps.event.trigger(map, "resize");
+        frame = null;
+      });
+    });
+    observer.observe(container);
+    return () => {
+      observer.disconnect();
+      if (frame !== null) window.cancelAnimationFrame(frame);
+    };
+  }, [map]);
+
+  return null;
+}
+
 // Custom zoom + fit controls — replaces Google's default controls.
 function MapControls({
   alarms,
@@ -325,10 +370,10 @@ function MapControls({
   }, [map, alarms, guards, trackers]);
 
   return (
-    <div className="absolute bottom-6 right-4 z-[500] flex flex-col gap-1">
+    <div className="absolute bottom-7 right-5 z-[500] flex flex-col gap-2 rounded-xl bg-card/95 p-1.5">
       <button
         onClick={fitAll}
-        className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card shadow-md text-foreground hover:bg-muted transition-colors"
+        className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-card text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
         aria-label="Fit all markers"
         title="Fit all"
       >
@@ -336,14 +381,14 @@ function MapControls({
       </button>
       <button
         onClick={zoomIn}
-        className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card shadow-md text-foreground hover:bg-muted transition-colors"
+        className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-card text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
         aria-label="Zoom in"
       >
         <Plus size={16} />
       </button>
       <button
         onClick={zoomOut}
-        className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card shadow-md text-foreground hover:bg-muted transition-colors"
+        className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-card text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
         aria-label="Zoom out"
       >
         <Minus size={16} />
@@ -469,10 +514,12 @@ function TrackerMarker({ tracker }: { tracker: TrackerLocation }) {
 
 function GuardMarker({
   guard,
+  assignedAlarm,
   isSelected,
   onMarkerClick,
 }: {
   guard: Guard & { currentLatitude: number; currentLongitude: number };
+  assignedAlarm?: Alarm;
   isSelected: boolean;
   onMarkerClick?: (guard: Guard) => void;
 }) {
@@ -482,6 +529,7 @@ function GuardMarker({
   const operational = getOperationalStatus(guard);
   const connectivity = getConnectivityStatus(guard);
   const freshness = getLocationFreshness(guard);
+  const markerState = getGuardMarkerState(guard, assignedAlarm);
 
   const OPERATIONAL_LABEL: Record<OperationalStatus, string> = {
     available: "Available",
@@ -489,10 +537,17 @@ function GuardMarker({
     offDuty: "Off Duty",
   };
   const LOCATION_LABEL: Record<LocationFreshness, string> = {
-    live: "Live location",
-    recent: "Last location",
-    stale: "Location may be outdated",
+    live: "Location live",
+    recent: "Location recent",
+    stale: "Location stale",
     none: "No location received yet",
+  };
+  const MARKER_LABEL: Record<GuardMarkerState, string> = {
+    available: "Available",
+    assigned: "Assigned",
+    responding: "Responding",
+    emergency: "Emergency",
+    disconnected: "Disconnected",
   };
 
   return (
@@ -500,7 +555,7 @@ function GuardMarker({
       <Marker
         ref={markerRef}
         position={{ lat: guard.currentLatitude, lng: guard.currentLongitude }}
-        icon={getGuardMarkerIcon(operational, guard.isConnected, freshness, isSelected)}
+        icon={getGuardMarkerIcon(markerState, freshness, isSelected)}
         zIndex={isSelected ? 1000 : undefined}
         onClick={() => {
           setIsOpen(true);
@@ -528,21 +583,26 @@ function GuardMarker({
             <p className="text-xs mt-1">
               <span
                 className="font-semibold"
-                style={{ color: OPERATIONAL_DOT_COLOR[operational] }}
+                style={{ color: GUARD_MARKER_COLOR[markerState] }}
               >
-                {OPERATIONAL_LABEL[operational]}
+                {MARKER_LABEL[markerState]} · {OPERATIONAL_LABEL[operational]}
               </span>
             </p>
             <p className="text-xs text-gray-500">
-              {connectivity === "connected" ? "Connected" : "Phone disconnected"}
-              {guard.lastActiveAt && ` · Last seen ${timeAgo(guard.lastActiveAt)}`}
+              {operational === "offDuty"
+                ? "Off Duty"
+                : connectivity === "connected"
+                  ? "Live"
+                  : "Phone disconnected"}
+              {guard.lastActiveAt && ` · Last active ${timeAgo(guard.lastActiveAt)}`}
             </p>
             <p
               className="text-xs mt-1"
               style={{ color: freshness === "stale" ? "#b45309" : "#6b7280" }}
             >
-              {LOCATION_LABEL[freshness]}
-              {guard.locationUpdatedAt && ` · ${timeAgo(guard.locationUpdatedAt)}`}
+              {guard.locationUpdatedAt
+                ? `Updated ${timeAgo(guard.locationUpdatedAt)}`
+                : LOCATION_LABEL[freshness]}
             </p>
           </div>
         </InfoWindow>
@@ -586,6 +646,7 @@ export function AlarmMap({
         gestureHandling="greedy"
       >
         <TilesLoadedHandler onLoaded={() => setTilesLoaded(true)} />
+        <MapResizeHandler />
         <MapFocusHandler
           alarms={alarms}
           guards={guards}
@@ -614,6 +675,7 @@ export function AlarmMap({
             <GuardMarker
               key={guard.id}
               guard={guard}
+              assignedAlarm={alarms.find((alarm) => alarm.guardId === guard.id)}
               isSelected={guard.id === selectedGuardId}
               onMarkerClick={onGuardMarkerClick}
             />

@@ -36,14 +36,14 @@ export function DashboardMetricCard({
     <Wrapper
       onClick={onClick}
       className={cn(
-        "flex items-center gap-4 rounded-lg border border-border bg-card p-4 text-left transition-colors",
+        "flex min-h-0 items-center gap-3 rounded-lg border border-border bg-card px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring",
         onClick && "cursor-pointer hover:bg-muted/50",
       )}
       {...(onClick ? { "aria-label": actionLabel ?? label } : {})}
     >
       <span
         className={cn(
-          "flex h-11 w-11 shrink-0 items-center justify-center rounded-full",
+          "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
           ACCENT_STYLE[accent],
         )}
         aria-hidden="true"
@@ -54,7 +54,7 @@ export function DashboardMetricCard({
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           {label}
         </p>
-        <p className="truncate text-2xl font-bold text-foreground">{value}</p>
+        <p className="truncate text-xl font-bold leading-tight text-foreground">{value}</p>
         {detail && (
           <p className="truncate text-xs font-medium text-muted-foreground">
             {detail}
