@@ -1,7 +1,7 @@
 import { Menu } from "lucide-react";
 import { useState } from "react";
 
-import wakilGoldLogo from "@/assets/wakil-gold.png";
+import wakilGoldLogo from "@/assets/wakil-wordmark-gold.png";
 import { Button } from "@/components/ui";
 
 import { Sidebar } from "./Sidebar";

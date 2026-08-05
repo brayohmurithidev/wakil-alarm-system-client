@@ -1,4 +1,4 @@
-import wakilGoldLogo from "@/assets/wakil-gold.png";
+import wakilGoldLogo from "@/assets/wakil-wordmark-gold.png";
 import { Body, Heading } from "@/components/ui";
 
 export function PrivacyPolicy() {

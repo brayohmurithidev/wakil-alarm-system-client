@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "react-router-dom";
 
 import { useGetAlarms } from "@/api/hooks/useGetAlarms";
-import wakilGoldLogo from "@/assets/wakil-gold.png";
+import wakilGoldLogo from "@/assets/wakil-wordmark-gold.png";
 import { Body, Button } from "@/components/ui";
 import {
   Tooltip,
