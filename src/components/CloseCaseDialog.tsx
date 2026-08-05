@@ -4,7 +4,7 @@ import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
 import type { Alarm, AlarmReport } from "@/api/types";
-import wakilLogo from "@/assets/wakil-wordmark-gold.png";
+import wakilLogo from "@/assets/wakil-wordmark-white.png";
 import {
   FormInput,
   FormLabel,

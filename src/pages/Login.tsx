@@ -15,7 +15,7 @@ import { z } from "zod";
 
 import { useLogin } from "@/api/hooks/useLogin";
 import loginSecurityNetwork from "@/assets/login-security-network.svg";
-import wakilGoldLogo from "@/assets/wakil-wordmark-gold.png";
+import wakilGoldLogo from "@/assets/wakil-wordmark-white.png";
 import {
   Body,
   Button,
