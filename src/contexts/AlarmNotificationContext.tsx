@@ -7,7 +7,12 @@ import { queryKeys } from "@/api/queryKeys";
 import type { Alarm } from "@/api/types";
 import { apiUrl } from "@/config";
 import { useAuth } from "@/contexts/AuthContext";
-import { refreshAccessToken } from "@/lib/axios";
+import { authDiagnostic } from "@/lib/authDiagnostics";
+import {
+  clearInvalidSession,
+  InvalidSessionError,
+  refreshAccessToken,
+} from "@/lib/axios";
 
 export type RealtimeConnectionStatus =
   | "connecting"
@@ -95,12 +100,27 @@ export const AlarmNotificationProvider: React.FC<{
     // An expired token surfaces here rather than as a normal disconnect.
     // Refresh once and let socket.io's own reconnection pick up the new
     // token via the callback above.
-    socket.on("connect_error", () => {
+    socket.on("connect_error", (error: Error & { data?: { code?: string } }) => {
       if (navigator.onLine) setConnectionStatus("reconnecting");
-      void refreshAccessToken().catch(() => {
-        // Refresh failed — the axios interceptor's 401 handling owns the
-        // logout path, so there is nothing useful to do here.
-      });
+      const code = error.data?.code;
+      if (code === "SOCKET_ACCOUNT_INACTIVE") {
+        clearInvalidSession("ACCOUNT_DISABLED");
+        return;
+      }
+      const authRejected = code?.startsWith("SOCKET_TOKEN_");
+      if (!authRejected) return;
+
+      const failedToken = localStorage.getItem("token");
+      authDiagnostic("socket_reconnect_started", { category: code });
+      void refreshAccessToken(failedToken)
+        .then(() => socket.connect())
+        .catch((refreshError) => {
+          if (refreshError instanceof InvalidSessionError && !refreshError.handled) {
+            clearInvalidSession(refreshError.reason);
+            refreshError.handled = true;
+          }
+          // Transport failures remain recoverable and never clear auth.
+        });
     });
 
     socket.on("disconnect", () => {
@@ -113,6 +133,7 @@ export const AlarmNotificationProvider: React.FC<{
     socket.on("connect", () => {
       window.clearTimeout(connectingTimer);
       setConnectionStatus("connected");
+      authDiagnostic("socket_reconnect_succeeded");
       queryClient.invalidateQueries({ queryKey: [queryKeys.alarms] });
       queryClient.invalidateQueries({ queryKey: [queryKeys.guards] });
     });

@@ -1,13 +1,42 @@
 import clsx from "clsx";
+import { useState } from "react";
 
 import type { GuardIncidentReport } from "@/api/types";
 import { Body } from "@/components/ui";
+import { reportMediaFailureOnce, resolveMediaUrl } from "@/lib/mediaUrl";
 
 type GuardIncidentReportCardProps = {
   report: GuardIncidentReport;
 };
 
 const formatDate = (dateString: string) => new Date(dateString).toLocaleString();
+
+function EvidenceImage({ url, alt }: { url: string; alt: string }) {
+  const [failed, setFailed] = useState(false);
+  const resolvedUrl = resolveMediaUrl(url);
+
+  if (!resolvedUrl || failed) {
+    return (
+      <div className="flex h-20 w-20 items-center justify-center rounded-md border border-border bg-muted px-2 text-center text-xs text-muted-foreground">
+        Image unavailable
+      </div>
+    );
+  }
+
+  return (
+    <a href={resolvedUrl} target="_blank" rel="noreferrer">
+      <img
+        src={resolvedUrl}
+        alt={alt}
+        className="h-20 w-20 rounded-md border border-border object-cover"
+        onError={() => {
+          reportMediaFailureOnce("alarm-evidence", resolvedUrl);
+          setFailed(true);
+        }}
+      />
+    </a>
+  );
+}
 
 export function GuardIncidentReportCard({ report }: GuardIncidentReportCardProps) {
   return (
@@ -60,13 +89,7 @@ export function GuardIncidentReportCard({ report }: GuardIncidentReportCardProps
           </Body>
           <div className="flex gap-2 flex-wrap">
             {report.photoUrls.map((url, i) => (
-              <a key={url} href={url} target="_blank" rel="noreferrer">
-                <img
-                  src={url}
-                  alt={`Evidence ${i + 1}`}
-                  className="w-20 h-20 object-cover rounded-md border border-border"
-                />
-              </a>
+              <EvidenceImage key={url} url={url} alt={`Evidence ${i + 1}`} />
             ))}
           </div>
         </div>
@@ -77,13 +100,7 @@ export function GuardIncidentReportCard({ report }: GuardIncidentReportCardProps
           <Body size="sm" className="text-muted-foreground mb-1">
             Client Signature
           </Body>
-          <a href={report.signatureUrl} target="_blank" rel="noreferrer">
-            <img
-              src={report.signatureUrl}
-              alt="Client signature"
-              className="h-20 rounded-md border border-border bg-white"
-            />
-          </a>
+          <EvidenceImage url={report.signatureUrl} alt="Client signature" />
         </div>
       )}
 

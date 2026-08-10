@@ -21,13 +21,13 @@ const STATUS_STYLE: Record<
   reconnecting: {
     dot: "bg-operational-warning",
     labelKey: "dashboard.reconnecting",
-    fallback: "Reconnecting",
+    fallback: "RECONNECTING…",
     pulse: true,
   },
   offline: {
     dot: "bg-alarm",
     labelKey: "dashboard.offline",
-    fallback: "Offline",
+    fallback: "REALTIME DISCONNECTED",
   },
 };
 
@@ -49,7 +49,10 @@ export function RealtimeStatusIndicator({
   return (
     <div
       className={cn(
-        "flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5",
+        "flex items-center gap-2 rounded-full border px-3 py-1.5",
+        status === "offline"
+          ? "border-alarm bg-alarm/15 text-alarm"
+          : "border-border bg-card",
         className,
       )}
       role="status"
@@ -65,7 +68,7 @@ export function RealtimeStatusIndicator({
         )}
         <span className={cn("relative h-2 w-2 rounded-full", style.dot)} />
       </span>
-      <span className="text-xs font-medium text-muted-foreground">
+      <span className="text-xs font-bold">
         {t(style.labelKey, style.fallback)}
       </span>
     </div>

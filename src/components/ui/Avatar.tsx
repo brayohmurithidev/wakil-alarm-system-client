@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import type { GuardStatus } from "@/api/types";
+import { reportMediaFailureOnce, resolveMediaUrl } from "@/lib/mediaUrl";
 import { cn } from "@/lib/utils";
 
 type AvatarVariant = "alarm" | "guard";
@@ -74,6 +75,7 @@ export function Avatar({
     variant === "guard" && guardStatus
       ? { borderColor: GUARD_RING_COLOR[guardStatus] }
       : undefined;
+  const resolvedImageUrl = resolveMediaUrl(imageUrl);
 
   return (
     <div
@@ -85,12 +87,15 @@ export function Avatar({
       )}
       style={ringStyle}
     >
-      {imageUrl && !imageFailed ? (
+      {resolvedImageUrl && !imageFailed ? (
         <img
-          src={imageUrl}
+          src={resolvedImageUrl}
           alt={name}
           className="h-full w-full object-cover"
-          onError={() => setImageFailed(true)}
+          onError={() => {
+            reportMediaFailureOnce("avatar", resolvedImageUrl);
+            setImageFailed(true);
+          }}
         />
       ) : (
         <span>{getInitials(name)}</span>
