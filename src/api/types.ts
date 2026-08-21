@@ -18,8 +18,23 @@ export type AdminUser = {
   phone: string;
   role: AdminRole;
   isActive: boolean;
+  isSuperAdmin: boolean;
   createdAt: string;
   updatedAt: string;
+};
+
+export type AlarmSourceCredential = {
+  id: string;
+  name: string;
+  provider: "VAKTA";
+  keyPrefix: string;
+  status: "ACTIVE" | "REVOKED" | "EXPIRED";
+  createdAt: string;
+  createdBy: Pick<AdminUser, "id" | "name" | "email"> | null;
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+  expiresAt: string | null;
+  legacy: boolean;
 };
 
 export type AlarmLocation = {

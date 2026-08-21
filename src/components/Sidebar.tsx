@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, History, LogOut, ShieldUser, User, Users, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, History, LogOut, Settings, ShieldUser, User, Users, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "react-router-dom";
@@ -47,6 +47,12 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
 
   const navItems = [
     {
+      label: "Settings",
+      path: "/settings/integrations/alarm-sources",
+      icon: <Settings />,
+      requiresSuperAdmin: true,
+    },
+    {
       label: t("sidebar.dashboard", "Dashboard"),
       path: "/dashboard",
       icon: <DashboardIcon />,
@@ -81,6 +87,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
   ];
 
   const filteredNavItems = navItems.filter((item) => {
+    if (item.requiresSuperAdmin && !adminUser?.isSuperAdmin) return false;
     if (!item.requiredRole) return true;
     return adminUser?.role === item.requiredRole;
   });

@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 
 import { AlarmDetail } from "@/pages/AlarmDetail";
 import { Alarms } from "@/pages/Alarms";
+import { AlarmSources } from "@/pages/AlarmSources";
 import { Dashboard } from "@/pages/Dashboard";
 import { ForgotPassword } from "@/pages/ForgotPassword";
 import { Guards } from "@/pages/Guards";
@@ -11,8 +12,10 @@ import { PrivacyPolicy } from "@/pages/PrivacyPolicy";
 import { Profile } from "@/pages/Profile";
 import { ResetPassword } from "@/pages/ResetPassword";
 import { Users } from "@/pages/Users";
+import { VaktaCredentials } from "@/pages/VaktaCredentials";
 
 import ProtectedRoutes from "./ProtectedRoutes";
+import { SuperAdminRoute } from "./SuperAdminRoute";
 
 const AppRoutes = () => {
   return (
@@ -67,6 +70,14 @@ const AppRoutes = () => {
             <Users />
           </ProtectedRoutes>
         }
+      />
+      <Route
+        path="/settings/integrations/alarm-sources"
+        element={<ProtectedRoutes><SuperAdminRoute><AlarmSources /></SuperAdminRoute></ProtectedRoutes>}
+      />
+      <Route
+        path="/settings/integrations/alarm-sources/vakta"
+        element={<ProtectedRoutes><SuperAdminRoute><VaktaCredentials /></SuperAdminRoute></ProtectedRoutes>}
       />
       <Route
         path="/profile"

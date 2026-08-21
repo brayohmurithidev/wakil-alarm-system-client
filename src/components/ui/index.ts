@@ -5,3 +5,4 @@ export * from "./Field";
 export * from "./Heading";
 export * from "./Input";
 export * from "./Label";
+export * from "./Textarea";
