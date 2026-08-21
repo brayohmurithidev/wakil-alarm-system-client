@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, History, LogOut, Settings, ShieldUser, User, Users, X } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, History, LogOut, Settings, ShieldUser, User, Users, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "react-router-dom";
@@ -37,21 +37,26 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(
     () => localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true",
   );
+  const [settingsExpanded, setSettingsExpanded] = useState(
+    () => location.pathname.startsWith("/settings"),
+  );
 
   useEffect(() => {
     localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(collapsed));
   }, [collapsed]);
 
+  useEffect(() => {
+    if (location.pathname.startsWith("/settings")) {
+      // Keep deep-linked settings routes discoverable after client-side navigation.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSettingsExpanded(true);
+    }
+  }, [location.pathname]);
+
   const alarmsNeedingAttention =
     alarms?.filter((a) => NEEDS_ATTENTION_STATUSES.has(a.status)).length ?? 0;
 
   const navItems = [
-    {
-      label: "Settings",
-      path: "/settings/integrations/alarm-sources",
-      icon: <Settings />,
-      requiresSuperAdmin: true,
-    },
     {
       label: t("sidebar.dashboard", "Dashboard"),
       path: "/dashboard",
@@ -87,12 +92,15 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
   ];
 
   const filteredNavItems = navItems.filter((item) => {
-    if (item.requiresSuperAdmin && !adminUser?.isSuperAdmin) return false;
     if (!item.requiredRole) return true;
     return adminUser?.role === item.requiredRole;
   });
 
   const isActive = (path: string) => location.pathname === path;
+  const isSettingsRoute = location.pathname.startsWith("/settings");
+  const isAlarmSourcesRoute = location.pathname.startsWith(
+    "/settings/integrations/alarm-sources",
+  );
 
   return (
     <>
@@ -204,6 +212,84 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
                 </Tooltip>
               );
             })}
+            <div className="space-y-1">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => setSettingsExpanded((prev) => !prev)}
+                      aria-expanded={settingsExpanded}
+                      aria-controls="settings-navigation"
+                      aria-label="Settings"
+                      className={`flex w-full items-center gap-3 rounded-lg transition-colors ${
+                        collapsed ? "justify-center px-0 py-3" : "px-4 py-3"
+                      } ${
+                        isSettingsRoute
+                          ? "bg-muted text-primary"
+                          : "text-foreground hover:bg-muted"
+                      }`}
+                    >
+                      <Settings className="h-5 w-5 shrink-0" />
+                      {!collapsed && (
+                        <>
+                          <Body className="flex-1 text-left font-medium">Settings</Body>
+                          <ChevronDown
+                            className={`h-4 w-4 transition-transform ${settingsExpanded ? "rotate-180" : ""}`}
+                            aria-hidden="true"
+                          />
+                        </>
+                      )}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" sideOffset={8}>
+                    Settings
+                  </TooltipContent>
+                </Tooltip>
+
+                {!collapsed && settingsExpanded && (
+                  <div
+                    id="settings-navigation"
+                    className="ml-5 space-y-1 border-l border-border pl-3"
+                  >
+                    <span
+                      aria-disabled="true"
+                      className="block cursor-not-allowed rounded-md px-3 py-2 text-sm text-muted-foreground/60"
+                    >
+                      General
+                    </span>
+                    {adminUser?.isSuperAdmin && (
+                      <div className="space-y-1">
+                        <span
+                          className={`block rounded-md px-3 py-2 text-xs font-semibold uppercase tracking-wide ${
+                            isAlarmSourcesRoute ? "text-primary" : "text-muted-foreground"
+                          }`}
+                        >
+                          Integrations
+                        </span>
+                        <Link
+                          to="/settings/integrations/alarm-sources"
+                          onClick={onMobileClose}
+                          aria-current={isAlarmSourcesRoute ? "page" : undefined}
+                          className={`ml-3 block rounded-md px-3 py-2 text-sm transition-colors ${
+                            isAlarmSourcesRoute
+                              ? "bg-primary/15 font-semibold text-primary"
+                              : "text-foreground hover:bg-muted"
+                          }`}
+                        >
+                          Alarm Sources
+                        </Link>
+                      </div>
+                    )}
+                    <Link
+                      to="/profile"
+                      onClick={onMobileClose}
+                      className="block rounded-md px-3 py-2 text-sm text-foreground transition-colors hover:bg-muted"
+                    >
+                      Account &amp; Security
+                    </Link>
+                  </div>
+                )}
+            </div>
           </nav>
 
           <div className="p-4 border-t border-border space-y-3">
