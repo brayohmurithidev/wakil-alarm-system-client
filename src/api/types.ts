@@ -111,6 +111,26 @@ export type GuardIncidentReport = {
   updatedAt: string;
 };
 
+export type AlarmAssignment = {
+  id: string;
+  alarmId: string;
+  guardId: string;
+  status:
+    | "assigned"
+    | "acknowledged"
+    | "arrived"
+    | "report_submitted"
+    | "reassigned"
+    | "unassigned"
+    | "cancelled"
+    | "closed";
+  assignedAt: string;
+  acknowledgedAt: string | null;
+  arrivedAt: string | null;
+  endedAt: string | null;
+  endReason: string | null;
+};
+
 export type Alarm = {
   id: string;
   latitude: number;
@@ -122,6 +142,9 @@ export type Alarm = {
   status: AlarmStatus;
   guardId?: string | null;
   guard?: Guard | null;
+  currentAssignmentId?: string | null;
+  currentAssignment?: AlarmAssignment | null;
+  assignments?: AlarmAssignment[];
   assignedUserId?: string | null;
   assignedUser?: AdminUser | null;
   createdAt: string;

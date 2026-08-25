@@ -15,8 +15,9 @@ const ACTIVE_STATUSES = new Set([
 export function getActiveGuardAssignments(alarms: Alarm[]): Map<string, string> {
   const assignments = new Map<string, string>();
   for (const alarm of alarms) {
-    if (alarm.guardId && ACTIVE_STATUSES.has(alarm.status)) {
-      assignments.set(alarm.guardId, alarm.id);
+    const guardId = alarm.currentAssignment?.guardId ?? alarm.guardId;
+    if (guardId && ACTIVE_STATUSES.has(alarm.status)) {
+      assignments.set(guardId, alarm.id);
     }
   }
   return assignments;
