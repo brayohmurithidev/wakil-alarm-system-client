@@ -11,6 +11,7 @@ import { notify } from "@/components/Alert/notify";
 import { AlarmIcon } from "@/components/icons/AlarmIcon";
 import { Loading } from "@/components/Loading";
 import { PageHeader } from "@/components/PageHeader";
+import { ReassignGuardDialog } from "@/components/ReassignGuardDialog";
 import { Body } from "@/components/ui";
 import { Avatar } from "@/components/ui/Avatar";
 import {
@@ -20,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/Select";
+import { useReassignGuardFlow } from "@/hooks/useReassignGuardFlow";
 import { formatDistanceKm, haversineKm } from "@/lib/distance";
 import { getActiveGuardAssignments } from "@/lib/guardAssignment";
 
@@ -39,7 +41,7 @@ export function Alarms() {
   const guardAssignments = getActiveGuardAssignments(alarms ?? []);
   const [updatingAlarmId, setUpdatingAlarmId] = useState<string | null>(null);
 
-  const { mutate: updateAlarm } = useUpdateAlarm({
+  const { mutate: updateAlarm, isPending: isReassigning } = useUpdateAlarm({
     onSuccess: (response) => {
       setUpdatingAlarmId(null);
       notify(response.message, { type: "success" });
@@ -52,10 +54,12 @@ export function Alarms() {
     },
   });
 
-  const handleGuardAssign = (alarmId: string, guardId: string) => {
-    setUpdatingAlarmId(alarmId);
-    updateAlarm({ id: alarmId, guardId });
-  };
+  const { pending, selectGuard, confirm, cancel } = useReassignGuardFlow(
+    (alarmId, guardId, reassign) => {
+      setUpdatingAlarmId(alarmId);
+      updateAlarm({ id: alarmId, guardId, ...(reassign ? { reassign } : {}) });
+    },
+  );
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString();
@@ -144,17 +148,13 @@ export function Alarms() {
                         <div className="flex-1">
                           <Select
                             value={alarm.guardId ?? UNASSIGNED_GUARD}
-                            onValueChange={(value) => {
-                              if (value === UNASSIGNED_GUARD) {
-                                setUpdatingAlarmId(alarm.id);
-                                updateAlarm({
-                                  id: alarm.id,
-                                  guardId: null as any,
-                                });
-                              } else {
-                                handleGuardAssign(alarm.id, value);
-                              }
-                            }}
+                            onValueChange={(value) =>
+                              selectGuard(
+                                alarm,
+                                value === UNASSIGNED_GUARD ? null : value,
+                                guards ?? [],
+                              )
+                            }
                             disabled={updatingAlarmId === alarm.id}
                           >
                             <SelectTrigger>
@@ -216,6 +216,12 @@ export function Alarms() {
           </div>
         </div>
       )}
+      <ReassignGuardDialog
+        pending={pending}
+        isPending={isReassigning}
+        onConfirm={confirm}
+        onCancel={cancel}
+      />
     </div>
   );
 }

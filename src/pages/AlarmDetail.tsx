@@ -19,6 +19,7 @@ import { GuardIncidentReportCard } from "@/components/GuardIncidentReportCard";
 import { AlarmIcon } from "@/components/icons/AlarmIcon";
 import { Loading } from "@/components/Loading";
 import { PageHeader } from "@/components/PageHeader";
+import { ReassignGuardDialog } from "@/components/ReassignGuardDialog";
 import { Body, Button, Heading } from "@/components/ui";
 import { Avatar } from "@/components/ui/Avatar";
 import {
@@ -28,6 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/Select";
+import { useReassignGuardFlow } from "@/hooks/useReassignGuardFlow";
 import { useReverseGeocode } from "@/hooks/useReverseGeocode";
 import { formatDistanceKm, haversineKm } from "@/lib/distance";
 import { getActiveGuardAssignments } from "@/lib/guardAssignment";
@@ -73,6 +75,11 @@ export function AlarmDetail() {
       );
     },
   });
+  const { pending: pendingReassign, selectGuard, confirm: confirmReassign, cancel: cancelReassign } =
+    useReassignGuardFlow((alarmId, guardId, reassign) => {
+      setIsUpdatingGuard(true);
+      updateAlarm({ id: alarmId, guardId, ...(reassign ? { reassign } : {}) });
+    });
 
   const { mutate: createAlarmReport, isPending: isCreatingReport } =
     useCreateAlarmReport({
@@ -470,22 +477,13 @@ export function AlarmDetail() {
                     <div className="flex-1">
                       <Select
                         value={alarm.guardId ?? UNASSIGNED_GUARD}
-                        onValueChange={(value) => {
-                          setIsUpdatingGuard(true);
-                          updateAlarm({
-                            id: id!,
-                            guardId:
-                              value === UNASSIGNED_GUARD
-                                ? (null as any)
-                                : value,
-                            // Only claim reassignment intent when this view
-                            // actually shows an existing assignment. If the
-                            // server disagrees — because another dispatcher
-                            // assigned first — the request is refused rather
-                            // than silently stealing the incident.
-                            ...(alarm.guardId ? { reassign: true } : {}),
-                          });
-                        }}
+                        onValueChange={(value) =>
+                          selectGuard(
+                            alarm,
+                            value === UNASSIGNED_GUARD ? null : value,
+                            guards ?? [],
+                          )
+                        }
                         disabled={
                           isUpdatingGuard ||
                           alarm.status === "closed" ||
@@ -684,6 +682,13 @@ export function AlarmDetail() {
         isLoading={isCreatingReport}
         mode={dialogMode}
         initialData={alarm.report}
+      />
+
+      <ReassignGuardDialog
+        pending={pendingReassign}
+        isPending={isUpdatingGuard}
+        onConfirm={confirmReassign}
+        onCancel={cancelReassign}
       />
     </div>
   );
