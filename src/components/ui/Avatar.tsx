@@ -8,7 +8,9 @@ type AvatarVariant = "alarm" | "guard";
 type AvatarSize = "sm" | "md" | "lg";
 
 type AvatarProps = {
-  name: string;
+  // Callers pass through API data (e.g. Alarm.userName) that can genuinely
+  // be null - an alarm created without a linked user's name, for instance.
+  name: string | null | undefined;
   imageUrl?: string | null;
   variant: AvatarVariant;
   size?: AvatarSize;
@@ -40,8 +42,8 @@ const SIZE_STYLES: Record<AvatarSize, string> = {
   lg: "h-16 w-16 text-lg",
 };
 
-function getInitials(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
+function getInitials(name: string | null | undefined) {
+  const parts = (name ?? "").trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return "?";
   if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
   return (parts[0]![0] + parts[parts.length - 1]![0]).toUpperCase();
@@ -90,7 +92,7 @@ export function Avatar({
       {resolvedImageUrl && !imageFailed ? (
         <img
           src={resolvedImageUrl}
-          alt={name}
+          alt={name ?? ""}
           className="h-full w-full object-cover"
           onError={() => {
             reportMediaFailureOnce("avatar", resolvedImageUrl);

@@ -136,8 +136,8 @@ export type Alarm = {
   latitude: number;
   longitude: number;
   userId: string;
-  userName: string;
-  userPhone: string;
+  userName: string | null;
+  userPhone: string | null;
   userImage?: string | null;
   status: AlarmStatus;
   guardId?: string | null;

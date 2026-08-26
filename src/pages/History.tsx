@@ -83,8 +83,8 @@ export function History() {
     const query = searchQuery.toLowerCase();
     return closed.filter(
       (alarm) =>
-        alarm.userName.toLowerCase().includes(query) ||
-        alarm.userPhone.toLowerCase().includes(query),
+        (alarm.userName ?? "").toLowerCase().includes(query) ||
+        (alarm.userPhone ?? "").toLowerCase().includes(query),
     );
   }, [alarms, searchQuery]);
 
