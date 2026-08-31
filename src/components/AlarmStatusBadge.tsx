@@ -30,7 +30,7 @@ const getStatusColor = (status: AlarmStatus) => {
   }
 };
 
-const STATUS_LABEL: Record<AlarmStatus, string> = {
+export const STATUS_LABEL: Record<AlarmStatus, string> = {
   unknown: "Unknown",
   pending: "Pending",
   open: "Open",

@@ -163,8 +163,17 @@ export type Alarm = {
   guardIncidentReports?: GuardIncidentReport[];
 };
 
+export type AlarmsPagination = {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+};
+
 export type AlarmsResponse = {
   alarms: Alarm[];
+  /** Present only when the request opted into pagination (page/limit passed). */
+  pagination?: AlarmsPagination;
 };
 
 export type AlarmResponse = {
