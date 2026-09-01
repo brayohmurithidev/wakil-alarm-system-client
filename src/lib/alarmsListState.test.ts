@@ -78,6 +78,18 @@ describe("parseAlarmsListSearchParams", () => {
     expect(state.status).toBe("");
   });
 
+  it("rejects the reverse too: an operational status cannot leak into History's scope", () => {
+    // A hand-edited /history?status=open must not silently show open alarms
+    // in a screen whose whole premise is "these are closed" - same
+    // protection as the operational direction above, verified explicitly
+    // for the direction that actually guards History.
+    const state = parseAlarmsListSearchParams(
+      new URLSearchParams("status=open"),
+      TERMINAL_ALARM_STATUSES,
+    );
+    expect(state.status).toBe("");
+  });
+
   it("rejects a garbage status/date/page/limit rather than throwing", () => {
     const state = parseAlarmsListSearchParams(
       new URLSearchParams("status=not_real&date=whenever&page=-3&limit=999"),
@@ -202,6 +214,17 @@ describe("resolveDateRange", () => {
     const { from, to } = resolveDateRange({ date: "custom", from: "2026-01-01", to: "" }, now);
     expect(from).toBeDefined();
     expect(to).toBeUndefined();
+  });
+
+  it("custom is independent of `now` - an already-entered range is never reinterpreted by when it's evaluated", () => {
+    // Unlike today/last7/last30, a custom range is two fixed calendar dates
+    // the operator typed - re-resolving it a day (or a timezone) later must
+    // produce the identical instant, not silently drift with whatever `now`
+    // happens to be at query time.
+    const filters = { date: "custom" as const, from: "2026-03-10", to: "2026-03-12" };
+    const resolvedNow = resolveDateRange(filters, now);
+    const resolvedMuchLater = resolveDateRange(filters, new Date("2027-11-20T09:00:00.000Z"));
+    expect(resolvedMuchLater).toEqual(resolvedNow);
   });
 });
 

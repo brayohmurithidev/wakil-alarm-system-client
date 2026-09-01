@@ -10,6 +10,7 @@ import { Loading } from "@/components/Loading";
 import { PageHeader } from "@/components/PageHeader";
 import { ReassignGuardDialog } from "@/components/ReassignGuardDialog";
 import { Body } from "@/components/ui";
+import { useAuth } from "@/contexts/AuthContext";
 import { useAlarmsListState } from "@/hooks/useAlarmsListState";
 import { useReassignGuardFlow } from "@/hooks/useReassignGuardFlow";
 import { type AlarmScope,isDefaultFilterState, statusesForScope, totalPagesFor } from "@/lib/alarmsListState";
@@ -38,6 +39,13 @@ export function AlarmsListPage({
 }) {
   const { state, queryParams, setFilters, setPage, setLimit, reset, clampToTotal } =
     useAlarmsListState(scope);
+
+  // Fails closed if somehow unavailable (shouldn't happen behind an
+  // authenticated route): DISPATCHER is the most-restricted role, so an
+  // unknown role never accidentally grants a reassignment the API would
+  // reject anyway.
+  const { adminUser } = useAuth();
+  const currentAdminRole = adminUser?.role ?? "DISPATCHER";
 
   const {
     data,
@@ -148,6 +156,7 @@ export function AlarmsListPage({
                 guards={guards}
                 guardAssignments={guardAssignments}
                 updatingAlarmId={updatingAlarmId}
+                currentAdminRole={currentAdminRole}
                 onSelectGuard={(alarm, guardId, guardsList) =>
                   selectGuard(alarm, guardId, guardsList)
                 }

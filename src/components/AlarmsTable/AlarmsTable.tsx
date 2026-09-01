@@ -1,7 +1,7 @@
-import { Loader2 } from "lucide-react";
+import { Loader2, Lock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-import type { Alarm, Guard } from "@/api/types";
+import type { AdminRole, Alarm, Guard } from "@/api/types";
 import { AlarmStatusBadge } from "@/components/AlarmStatusBadge";
 import { Body } from "@/components/ui";
 import { Avatar } from "@/components/ui/Avatar";
@@ -20,6 +20,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  assignmentRestrictionReason,
+  canAssignGuard,
+} from "@/lib/alarmAssignmentPermissions";
 import { formatAlarmDateParts, formatCoordinatesCompact, formatCoordinatesFull } from "@/lib/alarmFormat";
 import { isAlarmAssignable } from "@/lib/alarmsListState";
 import { formatDistanceKm, haversineKm } from "@/lib/distance";
@@ -33,12 +37,14 @@ function GuardAssignmentCell({
   guards,
   guardAssignments,
   updatingAlarmId,
+  currentAdminRole,
   onSelectGuard,
 }: {
   alarm: Alarm;
   guards: Guard[];
   guardAssignments: Map<string, string>;
   updatingAlarmId: string | null;
+  currentAdminRole: AdminRole;
   onSelectGuard: (alarm: Alarm, guardId: string | null, guards: Guard[]) => void;
 }) {
   // Terminal alarms (closed/cancelled) are never assignable - the API
@@ -48,15 +54,27 @@ function GuardAssignmentCell({
     return <Body size="sm">{alarm.guard?.name ?? "Unassigned"}</Body>;
   }
 
+  // Non-terminal, but the API's own role check (assignGuard.ts's
+  // assertMayReassign) would 409 a DISPATCHER trying to reassign a guard
+  // who's already acknowledged/reporting - see alarmAssignmentPermissions.ts,
+  // a pure mirror of that exact rule, not a re-derivation of it. Disabled
+  // rather than plain text: unlike the terminal case above (never
+  // editable, for anyone), this is a role-specific, situational
+  // restriction, so the control stays visually present with a reason a
+  // dispatcher can actually read, instead of looking identical to a
+  // permanently-closed row.
+  const restrictionReason = assignmentRestrictionReason(currentAdminRole, alarm);
+  const isRestricted = !canAssignGuard(currentAdminRole, alarm);
+
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2" title={restrictionReason ?? undefined}>
       <div className="flex-1">
         <Select
           value={alarm.guardId ?? UNASSIGNED_GUARD}
           onValueChange={(value) =>
             onSelectGuard(alarm, value === UNASSIGNED_GUARD ? null : value, guards)
           }
-          disabled={updatingAlarmId === alarm.id}
+          disabled={updatingAlarmId === alarm.id || isRestricted}
         >
           <SelectTrigger>
             <SelectValue />
@@ -93,6 +111,9 @@ function GuardAssignmentCell({
       {updatingAlarmId === alarm.id && (
         <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" />
       )}
+      {isRestricted && updatingAlarmId !== alarm.id && (
+        <Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+      )}
     </div>
   );
 }
@@ -102,12 +123,14 @@ export function AlarmsTable({
   guards,
   guardAssignments,
   updatingAlarmId,
+  currentAdminRole,
   onSelectGuard,
 }: {
   alarms: Alarm[];
   guards: Guard[] | undefined;
   guardAssignments: Map<string, string>;
   updatingAlarmId: string | null;
+  currentAdminRole: AdminRole;
   onSelectGuard: (alarm: Alarm, guardId: string | null, guards: Guard[]) => void;
 }) {
   const navigate = useNavigate();
@@ -169,6 +192,7 @@ export function AlarmsTable({
                   guards={guards ?? []}
                   guardAssignments={guardAssignments}
                   updatingAlarmId={updatingAlarmId}
+                  currentAdminRole={currentAdminRole}
                   onSelectGuard={onSelectGuard}
                 />
               </TableCell>
