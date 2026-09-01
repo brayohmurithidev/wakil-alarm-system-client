@@ -159,8 +159,8 @@ export function AlarmDetail() {
             <Body className="text-destructive mb-4">
               {t("alarmDetail.error", "Failed to load alarm")}
             </Body>
-            <Button onClick={() => navigate("/alarms")}>
-              {t("alarmDetail.backToAlarms", "Back to Alarms")}
+            <Button onClick={() => navigate(-1)}>
+              {t("alarmDetail.back", "Back")}
             </Button>
           </div>
         </div>
@@ -181,9 +181,14 @@ export function AlarmDetail() {
           <Button
             variant="outline"
             className="mb-4"
-            onClick={() => navigate("/alarms")}
+            // Wherever this detail view was actually reached from - Alarms
+            // or History are both real, separate routes now, and a
+            // hardcoded /alarms here sent a dispatcher who came from
+            // History back to the wrong list. navigate(-1) returns to
+            // whichever list actually pushed this route.
+            onClick={() => navigate(-1)}
           >
-            ← {t("alarmDetail.backToAlarms", "Back to Alarms")}
+            ← {t("alarmDetail.back", "Back")}
           </Button>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
