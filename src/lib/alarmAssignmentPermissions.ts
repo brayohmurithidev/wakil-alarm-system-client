@@ -57,3 +57,26 @@ export function assignmentRestrictionReason(
   }
   return null;
 }
+
+/**
+ * report_submitted specifically - not "any non-terminal, engaged status".
+ * The guard's fieldwork is done and they've already been released back to
+ * available elsewhere (see GUARD_OCCUPYING_STATUSES in the API's
+ * alarmStateMachine.ts, and submitIncidentReportController's call to
+ * releaseGuardIfIdle) - the alarm's own guardId stays pointing at them
+ * purely as a historical/informational record of who handled it, not as
+ * "currently occupied by". The remaining work is entirely the dispatcher's:
+ * write up and close the case (AlarmDetail's existing Close Case action).
+ *
+ * A live, distance-sorted reassignment dropdown at this stage is
+ * misleading on two counts: it implies the guard is still tied up on this
+ * incident (they're not), and it presents dispatch/reassignment as the
+ * next step (it isn't - case closure is). guard_acknowledged is
+ * deliberately NOT included here even though isGuardEngaged treats them
+ * the same for authorization purposes - a guard_acknowledged guard is
+ * genuinely still out on the incident, so a live control there is
+ * accurate, not misleading.
+ */
+export function isAwaitingCaseClosure(alarm: Pick<Alarm, "status">): boolean {
+  return alarm.status === "report_submitted";
+}

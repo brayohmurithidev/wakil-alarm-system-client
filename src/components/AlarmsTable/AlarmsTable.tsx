@@ -23,6 +23,7 @@ import {
 import {
   assignmentRestrictionReason,
   canAssignGuard,
+  isAwaitingCaseClosure,
 } from "@/lib/alarmAssignmentPermissions";
 import { formatAlarmDateParts, formatCoordinatesCompact, formatCoordinatesFull } from "@/lib/alarmFormat";
 import { isAlarmAssignable } from "@/lib/alarmsListState";
@@ -47,11 +48,37 @@ function GuardAssignmentCell({
   currentAdminRole: AdminRole;
   onSelectGuard: (alarm: Alarm, guardId: string | null, guards: Guard[]) => void;
 }) {
+  const navigate = useNavigate();
+
   // Terminal alarms (closed/cancelled) are never assignable - the API
   // rejects the write (ALARM_TERMINAL), so presenting a live control here
   // would just be a dropdown that always fails. Plain text instead (Phase 8).
   if (!isAlarmAssignable(alarm.status)) {
     return <Body size="sm">{alarm.guard?.name ?? "Unassigned"}</Body>;
+  }
+
+  // report_submitted: the guard is done and already released elsewhere -
+  // see isAwaitingCaseClosure's own doc comment. The remaining task is the
+  // dispatcher's, not another dispatch decision, so this shows who handled
+  // it as plain text (not a live, distance-sorted dropdown) plus a direct
+  // link into the existing Close Case action on Alarm Detail - not a new
+  // workflow, just surfacing the one that's already there.
+  if (isAwaitingCaseClosure(alarm)) {
+    return (
+      <div className="flex flex-col items-start gap-1">
+        <Body size="sm">{alarm.guard?.name ?? "Unassigned"}</Body>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/alarms/${alarm.id}`);
+          }}
+          className="text-xs font-semibold text-primary hover:underline"
+        >
+          Close Case →
+        </button>
+      </div>
+    );
   }
 
   // Non-terminal, but the API's own role check (assignGuard.ts's

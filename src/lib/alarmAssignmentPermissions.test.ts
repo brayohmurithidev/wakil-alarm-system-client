@@ -5,6 +5,7 @@ import type { AdminRole, Alarm } from "@/api/types";
 import {
   assignmentRestrictionReason,
   canAssignGuard,
+  isAwaitingCaseClosure,
   isGuardEngaged,
 } from "./alarmAssignmentPermissions";
 
@@ -106,5 +107,34 @@ describe("assignmentRestrictionReason", () => {
     const engaged = alarm({ status: "guard_acknowledged", guardId: "g1" });
     expect(assignmentRestrictionReason(DISPATCHER, engaged)).toMatch(/supervisor/i);
     expect(assignmentRestrictionReason(SUPERVISOR, engaged)).toBe(null);
+  });
+});
+
+describe("isAwaitingCaseClosure", () => {
+  it("true only for report_submitted", () => {
+    expect(isAwaitingCaseClosure(alarm({ status: "report_submitted" }))).toBe(true);
+  });
+
+  it("false for guard_acknowledged - the guard is genuinely still out on the incident there", () => {
+    expect(isAwaitingCaseClosure(alarm({ status: "guard_acknowledged" }))).toBe(false);
+  });
+
+  it("false for every other status, including terminal ones (handled separately)", () => {
+    const otherStatuses: Alarm["status"][] = [
+      "unknown",
+      "pending",
+      "open",
+      "acknowledged",
+      "assigned",
+      "closed",
+      "cancelled",
+    ];
+    for (const status of otherStatuses) {
+      expect(isAwaitingCaseClosure(alarm({ status }))).toBe(false);
+    }
+  });
+
+  it("is independent of guardId/guardAcknowledgedAt - status alone decides it", () => {
+    expect(isAwaitingCaseClosure(alarm({ status: "report_submitted", guardId: null }))).toBe(true);
   });
 });
