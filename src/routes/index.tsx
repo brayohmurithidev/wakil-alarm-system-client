@@ -72,13 +72,18 @@ const AppRoutes = () => {
         }
       />
       <Route
-        path="/settings/integrations/alarm-sources"
+        path="/integrations/alarm-sources"
         element={<ProtectedRoutes><SuperAdminRoute><AlarmSources /></SuperAdminRoute></ProtectedRoutes>}
       />
       <Route
-        path="/settings/integrations/alarm-sources/vakta"
+        path="/integrations/alarm-sources/vakta"
         element={<ProtectedRoutes><SuperAdminRoute><VaktaCredentials /></SuperAdminRoute></ProtectedRoutes>}
       />
+      {/* Integrations moved out from under Settings as part of the sidebar IA
+          refresh - these keep any existing bookmark/deep-link to the old
+          nested path working rather than 404ing. */}
+      <Route path="/settings/integrations/alarm-sources" element={<Navigate to="/integrations/alarm-sources" replace />} />
+      <Route path="/settings/integrations/alarm-sources/vakta" element={<Navigate to="/integrations/alarm-sources/vakta" replace />} />
       <Route
         path="/profile"
         element={

@@ -37,6 +37,21 @@ export type AlarmSourceCredential = {
   legacy: boolean;
 };
 
+// The generic, provider-neutral integration record (Phase 2 of the
+// external-alarm-contract work) - GET /api/admin/integrations(/:id).
+// Integration.status is authoritative for whether an integration can
+// authenticate at all; it is intentionally independent of any one
+// credential's own isActive/revokedAt - see useIntegrations.ts.
+export type IntegrationStatus = "ENABLED" | "DISABLED";
+export type Integration = {
+  id: string;
+  slug: string;
+  name: string;
+  status: IntegrationStatus;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type AlarmLocation = {
   id: string;
   latitude: number;

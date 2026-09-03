@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronLeft, ChevronRight, History, LogOut, Settings, ShieldUser, User, Users, X } from "lucide-react";
+import { Cable, ChevronDown, ChevronLeft, ChevronRight, History, LogOut, Settings, ShieldUser, User, Users, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "react-router-dom";
@@ -40,6 +40,13 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
   const [settingsExpanded, setSettingsExpanded] = useState(
     () => location.pathname.startsWith("/settings"),
   );
+  // Integrations is a first-class MANAGE section, not a Settings child - see
+  // routes/index.tsx, which moved its paths out from under /settings for
+  // exactly this reason (so Settings never reads as "selected" while an
+  // admin is actually managing integrations).
+  const [integrationsExpanded, setIntegrationsExpanded] = useState(
+    () => location.pathname.startsWith("/integrations"),
+  );
 
   useEffect(() => {
     localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(collapsed));
@@ -50,6 +57,13 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
       // Keep deep-linked settings routes discoverable after client-side navigation.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setSettingsExpanded(true);
+    }
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (location.pathname.startsWith("/integrations")) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setIntegrationsExpanded(true);
     }
   }, [location.pathname]);
 
@@ -98,8 +112,9 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
 
   const isActive = (path: string) => location.pathname === path;
   const isSettingsRoute = location.pathname.startsWith("/settings");
+  const isIntegrationsRoute = location.pathname.startsWith("/integrations");
   const isAlarmSourcesRoute = location.pathname.startsWith(
-    "/settings/integrations/alarm-sources",
+    "/integrations/alarm-sources",
   );
 
   return (
@@ -212,7 +227,73 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
                 </Tooltip>
               );
             })}
-            <div className="space-y-1">
+            {adminUser?.isSuperAdmin && (
+              <div className="space-y-1 pt-2">
+                {!collapsed && (
+                  <p className="px-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground/70">
+                    Manage
+                  </p>
+                )}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => setIntegrationsExpanded((prev) => !prev)}
+                      aria-expanded={integrationsExpanded}
+                      aria-controls="integrations-navigation"
+                      aria-label="Integrations"
+                      className={`flex w-full items-center gap-3 rounded-lg transition-colors ${
+                        collapsed ? "justify-center px-0 py-3" : "px-4 py-3"
+                      } ${
+                        isIntegrationsRoute
+                          ? "bg-muted text-primary"
+                          : "text-foreground hover:bg-muted"
+                      }`}
+                    >
+                      <Cable className="h-5 w-5 shrink-0" />
+                      {!collapsed && (
+                        <>
+                          <Body className="flex-1 text-left font-medium">Integrations</Body>
+                          <ChevronDown
+                            className={`h-4 w-4 transition-transform ${integrationsExpanded ? "rotate-180" : ""}`}
+                            aria-hidden="true"
+                          />
+                        </>
+                      )}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" sideOffset={8}>
+                    Integrations
+                  </TooltipContent>
+                </Tooltip>
+
+                {!collapsed && integrationsExpanded && (
+                  <div
+                    id="integrations-navigation"
+                    className="ml-5 space-y-1 border-l border-border pl-3"
+                  >
+                    {/* Alarm Sources is the only Integrations destination that exists
+                        today - Overview/Webhooks/API Access are deliberately not
+                        listed here; adding them would be placeholder navigation with
+                        no page behind it. */}
+                    <Link
+                      to="/integrations/alarm-sources"
+                      onClick={onMobileClose}
+                      aria-current={isAlarmSourcesRoute ? "page" : undefined}
+                      className={`block rounded-md px-3 py-2 text-sm transition-colors ${
+                        isAlarmSourcesRoute
+                          ? "bg-primary/15 font-semibold text-primary"
+                          : "text-foreground hover:bg-muted"
+                      }`}
+                    >
+                      Alarm Sources
+                    </Link>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="space-y-1 pt-2">
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
@@ -257,29 +338,6 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
                     >
                       General
                     </span>
-                    {adminUser?.isSuperAdmin && (
-                      <div className="space-y-1">
-                        <span
-                          className={`block rounded-md px-3 py-2 text-xs font-semibold uppercase tracking-wide ${
-                            isAlarmSourcesRoute ? "text-primary" : "text-muted-foreground"
-                          }`}
-                        >
-                          Integrations
-                        </span>
-                        <Link
-                          to="/settings/integrations/alarm-sources"
-                          onClick={onMobileClose}
-                          aria-current={isAlarmSourcesRoute ? "page" : undefined}
-                          className={`ml-3 block rounded-md px-3 py-2 text-sm transition-colors ${
-                            isAlarmSourcesRoute
-                              ? "bg-primary/15 font-semibold text-primary"
-                              : "text-foreground hover:bg-muted"
-                          }`}
-                        >
-                          Alarm Sources
-                        </Link>
-                      </div>
-                    )}
                     <Link
                       to="/profile"
                       onClick={onMobileClose}
