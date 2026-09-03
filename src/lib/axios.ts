@@ -3,6 +3,7 @@ import axios from "axios";
 import { apiUrl } from "@/config";
 import {
   authDiagnostic,
+  decodeJwtExpiryMs,
   type SessionClearReason,
 } from "@/lib/authDiagnostics";
 
@@ -69,9 +70,15 @@ export function classifyRefreshFailure(error: unknown):
   if (error.response?.status === 403) return "ACCOUNT_DISABLED";
   if (error.response?.status !== 401) return null;
 
-  return error.response.data?.error === "Refresh token expired"
-    ? "REFRESH_TOKEN_EXPIRED"
-    : "REFRESH_TOKEN_INVALID";
+  const message = error.response.data?.error;
+  if (message === "Refresh token expired") return "REFRESH_TOKEN_EXPIRED";
+  // Distinct from an existing refresh token being invalid/revoked — this is
+  // "there was never a refresh cookie to send" (matches the backend's exact
+  // "No refresh token provided" string). Worth telling apart in diagnostics:
+  // a session that never had a cookie in the first place points at a
+  // cookie-delivery problem (domain/SameSite/Secure), not token rotation.
+  if (message === "No refresh token provided") return "SESSION_MISSING";
+  return "REFRESH_TOKEN_INVALID";
 }
 
 async function performRefresh(failedAccessToken: string | null): Promise<string> {
@@ -81,20 +88,20 @@ async function performRefresh(failedAccessToken: string | null): Promise<string>
   const refreshUnderLock = async () => {
     const currentToken = localStorage.getItem("token");
     if (failedAccessToken && currentToken && currentToken !== failedAccessToken) {
-      authDiagnostic("refresh_joined_cross_tab");
+      authDiagnostic("AUTH_REFRESH_JOINED", { scope: "cross_tab" });
       return currentToken;
     }
 
-    authDiagnostic("refresh_started", { requestType: "POST /api/auth/refresh-token" });
+    authDiagnostic("AUTH_REFRESH_STARTED", { requestType: "POST /api/auth/refresh-token" });
     try {
       const response = await axios.post(refreshUrl, {}, { withCredentials: true });
       const newToken = response.data.token as string;
       localStorage.setItem("token", newToken);
-      authDiagnostic("refresh_success");
+      authDiagnostic("AUTH_REFRESH_SUCCEEDED");
       return newToken;
     } catch (error) {
       const reason = classifyRefreshFailure(error);
-      authDiagnostic("refresh_failure", {
+      authDiagnostic("AUTH_REFRESH_FAILED", {
         category: reason ?? "TRANSIENT",
       });
       if (reason) throw new InvalidSessionError(reason);
@@ -124,7 +131,7 @@ export async function refreshAccessToken(
         refreshPromise = null;
       });
   } else {
-    authDiagnostic("refresh_joined_existing_promise");
+    authDiagnostic("AUTH_REFRESH_JOINED", { scope: "same_tab" });
   }
 
   return refreshPromise;
@@ -142,14 +149,27 @@ axiosInstance.interceptors.response.use(
     const hadToken = !!originalRequest?.headers?.Authorization;
 
     if (error.response?.status === 401 && hadToken && !originalRequest._retry) {
+      const failedToken = String(originalRequest.headers.Authorization).replace(
+        /^Bearer\s+/,
+        "",
+      );
       authDiagnostic("api_401_received", { requestType: originalRequest.method ?? "unknown" });
+
+      // Distinguishes "the access token had genuinely aged past its exp
+      // claim" (expected, routine) from a 401 that arrived while the token
+      // still looked valid (unexpected — worth flagging when auditing an
+      // unexplained logout, since that points at something other than
+      // ordinary token aging: clock skew, premature revocation, etc).
+      const expiryMs = decodeJwtExpiryMs(failedToken);
+      if (expiryMs !== null && Date.now() >= expiryMs) {
+        authDiagnostic("AUTH_ACCESS_TOKEN_EXPIRED", {
+          staleForMs: Date.now() - expiryMs,
+        });
+      }
+
       originalRequest._retry = true;
 
       try {
-        const failedToken = String(originalRequest.headers.Authorization).replace(
-          /^Bearer\s+/,
-          "",
-        );
         const newToken = await refreshAccessToken(failedToken);
         originalRequest.headers.Authorization = `Bearer ${newToken}`;
         return axiosInstance(originalRequest);

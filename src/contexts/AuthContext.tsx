@@ -1,7 +1,11 @@
 import { createContext, useContext, useEffect, useState } from "react";
 
 import type { AdminUser } from "@/api/types";
-import { authDiagnostic, type SessionClearReason } from "@/lib/authDiagnostics";
+import {
+  authDiagnostic,
+  type SessionClearReason,
+  toLogoutTriggerReason,
+} from "@/lib/authDiagnostics";
 import axiosInstance, {
   InvalidSessionError,
   refreshAccessToken,
@@ -25,7 +29,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const clearSession = (reason: SessionClearReason) => {
-      authDiagnostic("session_cleared", { reason });
+      authDiagnostic("AUTH_LOGOUT_TRIGGERED", {
+        reason: toLogoutTriggerReason(reason),
+        rawReason: reason,
+      });
       localStorage.removeItem("token");
       localStorage.removeItem("adminUser");
       setAdminUser(null);
@@ -50,6 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         );
         localStorage.setItem("adminUser", JSON.stringify(response.data.adminUser));
         setAdminUser(response.data.adminUser);
+        authDiagnostic("AUTH_SESSION_RESTORED", { hadCachedUser: !!cachedUser });
       } catch (error) {
         if (error instanceof InvalidSessionError && !error.handled) {
           clearSession(error.reason);
@@ -97,7 +105,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // user in a "logged in" UI.
     axiosInstance.post("/api/auth/logout").catch(() => {});
 
-    authDiagnostic("session_cleared", { reason: "USER_LOGOUT" });
+    authDiagnostic("AUTH_LOGOUT_TRIGGERED", {
+      reason: toLogoutTriggerReason("USER_LOGOUT"),
+      rawReason: "USER_LOGOUT",
+    });
     localStorage.removeItem("token");
     localStorage.removeItem("adminUser");
     setAdminUser(null);
