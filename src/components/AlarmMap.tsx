@@ -5,14 +5,15 @@ import {
   useMap,
   useMarkerRef,
 } from "@vis.gl/react-google-maps";
-import { ChevronRight, Maximize2, Minus, Plus } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { ChevronRight, Locate, Maximize2, Minus, Plus } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import type { TrackerLocation } from "@/api/hooks/useGetTrackerLocation";
 import type { Alarm, AlarmStatus, Guard } from "@/api/types";
 import { LoaderIcon } from "@/components/icons";
 import { Avatar } from "@/components/ui/Avatar";
+import { useCameraOwnership } from "@/hooks/useCameraOwnership";
 import {
   getConnectivityStatus,
   getLocationFreshness,
@@ -20,6 +21,7 @@ import {
   type LocationFreshness,
   type OperationalStatus,
 } from "@/lib/guardState";
+import { focusTargetKey } from "@/lib/mapCamera";
 
 function timeAgo(iso: string): string {
   const secs = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
@@ -238,56 +240,68 @@ type AlarmMapProps = {
   onGuardMarkerClick?: (guard: Guard) => void;
 };
 
-// Handles smooth pan+zoom to a focused alarm or guard location.
+// Handles smooth pan+zoom to a focused alarm or guard location - but only
+// while the operator hasn't taken the camera over themselves (canAutoMove).
+// This is the actual fix for the map-zoom-resets bug: this effect's own
+// dependency array intentionally still includes the full alarms/guards
+// arrays (see the module header comment) - what's changed is that it no
+// longer unconditionally moves the camera on every re-run, only when
+// cameraMode says it's still allowed to.
 function MapFocusHandler({
   alarms,
   guards,
   selectedGuardId,
   focusedAlarmId,
   focusedGuard,
+  canAutoMove,
+  withSuppressedCameraEvents,
 }: {
   alarms: Alarm[];
   guards?: Guard[];
   selectedGuardId?: string | null;
   focusedAlarmId?: string | null;
   focusedGuard?: Guard | null;
+  canAutoMove: boolean;
+  withSuppressedCameraEvents: (move: () => void) => void;
 }) {
   const map = useMap();
 
   useEffect(() => {
-    if (!map) return;
+    if (!map || !canAutoMove) return;
 
-    // Guard focused from the panel
-    if (focusedGuard && focusedGuard.currentLatitude != null && focusedGuard.currentLongitude != null) {
-      map.panTo({ lat: focusedGuard.currentLatitude, lng: focusedGuard.currentLongitude });
-      map.setZoom(16);
-      return;
-    }
+    withSuppressedCameraEvents(() => {
+      // Guard focused from the panel
+      if (focusedGuard && focusedGuard.currentLatitude != null && focusedGuard.currentLongitude != null) {
+        map.panTo({ lat: focusedGuard.currentLatitude, lng: focusedGuard.currentLongitude });
+        map.setZoom(16);
+        return;
+      }
 
-    if (!focusedAlarmId) return;
-    const alarm = alarms.find((a) => a.id === focusedAlarmId);
-    if (!alarm) return;
+      if (!focusedAlarmId) return;
+      const alarm = alarms.find((a) => a.id === focusedAlarmId);
+      if (!alarm) return;
 
-    const selectedGuard = guards?.find(
-      (g) =>
-        g.id === selectedGuardId &&
-        g.currentLatitude != null &&
-        g.currentLongitude != null,
-    );
+      const selectedGuard = guards?.find(
+        (g) =>
+          g.id === selectedGuardId &&
+          g.currentLatitude != null &&
+          g.currentLongitude != null,
+      );
 
-    if (selectedGuard) {
-      const bounds = new google.maps.LatLngBounds();
-      bounds.extend({ lat: alarm.latitude, lng: alarm.longitude });
-      bounds.extend({
-        lat: selectedGuard.currentLatitude as number,
-        lng: selectedGuard.currentLongitude as number,
-      });
-      map.fitBounds(bounds, 80);
-    } else {
-      map.panTo({ lat: alarm.latitude, lng: alarm.longitude });
-      map.setZoom(16);
-    }
-  }, [focusedAlarmId, focusedGuard, alarms, guards, selectedGuardId, map]);
+      if (selectedGuard) {
+        const bounds = new google.maps.LatLngBounds();
+        bounds.extend({ lat: alarm.latitude, lng: alarm.longitude });
+        bounds.extend({
+          lat: selectedGuard.currentLatitude as number,
+          lng: selectedGuard.currentLongitude as number,
+        });
+        map.fitBounds(bounds, 80);
+      } else {
+        map.panTo({ lat: alarm.latitude, lng: alarm.longitude });
+        map.setZoom(16);
+      }
+    });
+  }, [focusedAlarmId, focusedGuard, alarms, guards, selectedGuardId, map, canAutoMove, withSuppressedCameraEvents]);
 
   return null;
 }
@@ -324,53 +338,90 @@ function MapControls({
   alarms,
   guards,
   trackers,
+  hasFocusTarget,
+  markManualInteraction,
+  resetToAuto,
+  withSuppressedCameraEvents,
 }: {
   alarms: Alarm[];
   guards?: Guard[];
   trackers?: TrackerLocation[];
+  hasFocusTarget: boolean;
+  markManualInteraction: () => void;
+  resetToAuto: () => void;
+  withSuppressedCameraEvents: (move: () => void) => void;
 }) {
   const map = useMap();
 
+  // A deliberate zoom-button click is exactly as "manual" as a wheel/pinch
+  // gesture (see desired behaviour C) - marked explicitly here rather than
+  // relying on the ambient zoom_changed listener to catch it.
   const zoomIn = useCallback(() => {
     if (!map) return;
+    markManualInteraction();
     map.setZoom((map.getZoom() ?? 12) + 1);
-  }, [map]);
+  }, [map, markManualInteraction]);
 
   const zoomOut = useCallback(() => {
     if (!map) return;
+    markManualInteraction();
     map.setZoom((map.getZoom() ?? 12) - 1);
-  }, [map]);
+  }, [map, markManualInteraction]);
 
+  // Explicit "fit everything" action - one of the intentional events that
+  // restores auto camera behaviour (desired behaviour B / §3). Suppressed
+  // so its own resulting zoom/center events don't immediately flip mode
+  // back to manual and undo the very reset this just performed.
   const fitAll = useCallback(() => {
     if (!map) return;
+    resetToAuto();
+    withSuppressedCameraEvents(() => {
+      const points: { lat: number; lng: number }[] = [
+        ...alarms.map((a) => ({ lat: a.latitude, lng: a.longitude })),
+        ...(guards ?? [])
+          .filter((g) => g.currentLatitude != null && g.currentLongitude != null)
+          .map((g) => ({ lat: g.currentLatitude as number, lng: g.currentLongitude as number })),
+        ...(trackers ?? []).map((t) => ({ lat: t.latitude, lng: t.longitude })),
+      ];
 
-    const points: { lat: number; lng: number }[] = [
-      ...alarms.map((a) => ({ lat: a.latitude, lng: a.longitude })),
-      ...(guards ?? [])
-        .filter((g) => g.currentLatitude != null && g.currentLongitude != null)
-        .map((g) => ({ lat: g.currentLatitude as number, lng: g.currentLongitude as number })),
-      ...(trackers ?? []).map((t) => ({ lat: t.latitude, lng: t.longitude })),
-    ];
+      if (points.length === 0) {
+        map.panTo(DEFAULT_CENTER);
+        map.setZoom(12);
+        return;
+      }
 
-    if (points.length === 0) {
-      map.panTo(DEFAULT_CENTER);
-      map.setZoom(12);
-      return;
-    }
+      if (points.length === 1) {
+        map.panTo(points[0]);
+        map.setZoom(14);
+        return;
+      }
 
-    if (points.length === 1) {
-      map.panTo(points[0]);
-      map.setZoom(14);
-      return;
-    }
+      const bounds = new google.maps.LatLngBounds();
+      points.forEach((p) => bounds.extend(p));
+      map.fitBounds(bounds, 60);
+    });
+  }, [map, alarms, guards, trackers, resetToAuto, withSuppressedCameraEvents]);
 
-    const bounds = new google.maps.LatLngBounds();
-    points.forEach((p) => bounds.extend(p));
-    map.fitBounds(bounds, 60);
-  }, [map, alarms, guards, trackers]);
+  // Restores the camera to whatever alarm/guard is currently focused - the
+  // "clear way to recenter" desired behaviour requires (§4) once manual
+  // interaction has moved the camera away from it. MapFocusHandler does the
+  // actual panning/zooming once this flips canAutoMove back on.
+  const recenter = useCallback(() => {
+    resetToAuto();
+  }, [resetToAuto]);
 
   return (
     <div className="absolute bottom-7 right-5 z-[500] flex flex-col gap-2 rounded-xl bg-card/95 p-1.5">
+      {hasFocusTarget && (
+        <button
+          onClick={recenter}
+          className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-card text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+          aria-label="Recenter on selected incident"
+          title="Recenter"
+        >
+          <Locate size={15} />
+        </button>
+      )}
       <button
         onClick={fitAll}
         className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-card text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
@@ -630,6 +681,36 @@ export function AlarmMap({
 
   const [tilesLoaded, setTilesLoaded] = useState(false);
 
+  // Camera ownership: see src/lib/mapCamera.ts for the root cause and the
+  // decision logic itself. focusKey identifies WHAT the camera should be
+  // following (by id, not by object reference) so a routine data refetch -
+  // which hands back new alarms/guards array references every time - never
+  // looks like a new target and never clobbers manual mode.
+  const focusKey = focusTargetKey(focusedAlarmId ?? null, focusedGuard?.id ?? null);
+  const { canAutoMove, markManualInteraction, resetToAuto } = useCameraOwnership(focusKey);
+
+  // Google Maps' zoom_changed/center_changed fire for BOTH user gestures and
+  // programmatic map.panTo/setZoom/fitBounds calls - there's no built-in way
+  // to tell them apart. withSuppressedCameraEvents wraps our own
+  // programmatic moves (MapFocusHandler's auto-pan, "Fit all") so the events
+  // they trigger don't get misread as a manual interaction and immediately
+  // undo themselves. The window is a plain timeout rather than a
+  // single-event flag because one panTo+setZoom (or fitBounds) reliably
+  // fires more than one change event as the camera animates.
+  const suppressCameraEventsRef = useRef(false);
+  const withSuppressedCameraEvents = useCallback((move: () => void) => {
+    suppressCameraEventsRef.current = true;
+    move();
+    window.setTimeout(() => {
+      suppressCameraEventsRef.current = false;
+    }, 500);
+  }, []);
+
+  const handleUserCameraEvent = useCallback(() => {
+    if (suppressCameraEventsRef.current) return;
+    markManualInteraction();
+  }, [markManualInteraction]);
+
   return (
     <div className="relative flex h-full w-full min-h-0 flex-1 flex-col">
       {!tilesLoaded && (
@@ -644,6 +725,13 @@ export function AlarmMap({
         className="h-full w-full min-h-0 flex-1 rounded-lg"
         disableDefaultUI
         gestureHandling="greedy"
+        // onDragstart only ever fires for a real user gesture (never a
+        // programmatic call), so it marks manual unconditionally. zoom/center
+        // change events are ambiguous (see above) and go through the
+        // suppression-aware handler instead.
+        onDragstart={markManualInteraction}
+        onZoomChanged={handleUserCameraEvent}
+        onCenterChanged={handleUserCameraEvent}
       >
         <TilesLoadedHandler onLoaded={() => setTilesLoaded(true)} />
         <MapResizeHandler />
@@ -653,8 +741,18 @@ export function AlarmMap({
           selectedGuardId={selectedGuardId}
           focusedAlarmId={focusedAlarmId}
           focusedGuard={focusedGuard}
+          canAutoMove={canAutoMove}
+          withSuppressedCameraEvents={withSuppressedCameraEvents}
         />
-        <MapControls alarms={alarms} guards={guards} trackers={trackers} />
+        <MapControls
+          alarms={alarms}
+          guards={guards}
+          trackers={trackers}
+          hasFocusTarget={focusKey !== null}
+          markManualInteraction={markManualInteraction}
+          resetToAuto={resetToAuto}
+          withSuppressedCameraEvents={withSuppressedCameraEvents}
+        />
         {alarms.map((alarm) => (
           <AlarmMarker
             key={alarm.id}
