@@ -41,7 +41,6 @@ export function CreateUserDialog({
 
   const [formData, setFormData] = useState({
     email: "",
-    password: "",
     name: "",
     phone: "",
     role: "DISPATCHER" as AdminRole,
@@ -57,13 +56,16 @@ export function CreateUserDialog({
     e.preventDefault();
     createUser(formData, {
       onSuccess: () => {
-        notify(t("users.form.success", "User created successfully!"), {
-          type: "success",
-        });
+        notify(
+          t(
+            "users.form.success",
+            "User created! An activation email has been sent.",
+          ),
+          { type: "success" },
+        );
         onOpenChange(false);
         setFormData({
           email: "",
-          password: "",
           name: "",
           phone: "",
           role: "DISPATCHER",
@@ -84,7 +86,6 @@ export function CreateUserDialog({
       onOpenChange(false);
       setFormData({
         email: "",
-        password: "",
         name: "",
         phone: "",
         role: "DISPATCHER",
@@ -148,22 +149,12 @@ export function CreateUserDialog({
             />
           </FormGroup>
 
-          <FormGroup>
-            <FormLabel htmlFor="password">
-              {t("users.form.password", "Password")}
-            </FormLabel>
-            <FormInput
-              id="password"
-              type="password"
-              value={formData.password}
-              onChange={(e) =>
-                setFormData({ ...formData, password: e.target.value })
-              }
-              required
-              disabled={isPending}
-              minLength={6}
-            />
-          </FormGroup>
+          <p className="text-sm text-muted-foreground">
+            {t(
+              "users.form.activationNotice",
+              "An activation email will be sent so this person can choose their own password.",
+            )}
+          </p>
 
           <FormGroup>
             <FormLabel htmlFor="role">{t("users.form.role", "Role")}</FormLabel>

@@ -36,7 +36,6 @@ type UpdateUserDialogProps = {
 
 type UpdateUserFormData = {
   email: string;
-  password: string;
   name: string;
   phone: string;
   role: AdminRole;
@@ -60,7 +59,6 @@ export function UpdateUserDialog({
   } = useForm<UpdateUserFormData>({
     defaultValues: {
       email: "",
-      password: "",
       name: "",
       phone: "",
       role: "DISPATCHER",
@@ -78,7 +76,6 @@ export function UpdateUserDialog({
     if (user && open) {
       reset({
         email: user.email,
-        password: "",
         name: user.name,
         phone: user.phone,
         role: user.role,
@@ -97,7 +94,6 @@ export function UpdateUserDialog({
       phone: string;
       role: AdminRole;
       isActive: boolean;
-      password?: string;
     } = {
       id: user.id,
       email: data.email,
@@ -106,10 +102,6 @@ export function UpdateUserDialog({
       role: data.role,
       isActive: data.isActive,
     };
-
-    if (data.password) {
-      updateData.password = data.password;
-    }
 
     updateUser(updateData, {
       onSuccess: () => {
@@ -123,7 +115,6 @@ export function UpdateUserDialog({
           phone: data.phone,
           role: data.role,
           isActive: data.isActive,
-          password: "",
         });
       },
       onError: (error: any) => {
@@ -202,34 +193,6 @@ export function UpdateUserDialog({
               disabled={isPending}
             />
             {errors.phone && <FormError>{errors.phone.message}</FormError>}
-          </FormGroup>
-
-          <FormGroup>
-            <FormLabel htmlFor="password">
-              {t("users.form.password", "Password")}{" "}
-              {t("users.form.optional", "(Optional)")}
-            </FormLabel>
-            <FormInput
-              id="password"
-              type="password"
-              {...register("password", {
-                minLength: {
-                  value: 6,
-                  message: t(
-                    "users.form.passwordMinLength",
-                    "Password must be at least 6 characters",
-                  ),
-                },
-              })}
-              disabled={isPending}
-              placeholder={t(
-                "users.form.passwordPlaceholder",
-                "Leave blank to keep current",
-              )}
-            />
-            {errors.password && (
-              <FormError>{errors.password.message}</FormError>
-            )}
           </FormGroup>
 
           <FormGroup>

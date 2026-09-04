@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 
+import { ActivateAccount } from "@/pages/ActivateAccount";
 import { AlarmDetail } from "@/pages/AlarmDetail";
 import { Alarms } from "@/pages/Alarms";
 import { AlarmSources } from "@/pages/AlarmSources";
@@ -23,6 +24,7 @@ const AppRoutes = () => {
       <Route path="/login" element={<Login />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/activate" element={<ActivateAccount />} />
       <Route
         path="/dashboard"
         element={

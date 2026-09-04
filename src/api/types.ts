@@ -19,6 +19,10 @@ export type AdminUser = {
   role: AdminRole;
   isActive: boolean;
   isSuperAdmin: boolean;
+  // null = invitation pending (the employee hasn't activated yet); a real
+  // timestamp thereafter. See the Phase C report's "Account-state model"
+  // section - isActive is orthogonal to this, not a substitute for it.
+  activatedAt: string | null;
   createdAt: string;
   updatedAt: string;
 };
