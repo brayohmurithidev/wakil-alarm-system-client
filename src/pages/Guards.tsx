@@ -39,11 +39,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useAuth } from "@/contexts/AuthContext";
+import { canManageGuardAccounts } from "@/lib/guardManagementPermissions";
 
 const GUARD_TABLE_COLUMNS = 7;
 
 export function Guards() {
   const { t } = useTranslation();
+  const { adminUser } = useAuth();
+  // Backend is authoritative (routes/guards.ts requireRole(["SUPERVISOR",
+  // "ADMIN"]) - Guard Management RBAC Phase 2); this only hides actions a
+  // Dispatcher's request would 403 on anyway, it grants nothing.
+  const canManageGuards = !!adminUser && canManageGuardAccounts(adminUser);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<{
@@ -147,12 +154,14 @@ export function Guards() {
         title={t("guards.title", "Guards")}
         icon={<ShieldUser size={30} />}
         actions={
-          <div>
-            <Button onClick={() => setCreateDialogOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              {t("guards.createGuard", "Create Guard")}
-            </Button>
-          </div>
+          canManageGuards ? (
+            <div>
+              <Button onClick={() => setCreateDialogOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                {t("guards.createGuard", "Create Guard")}
+              </Button>
+            </div>
+          ) : undefined
         }
       />
 
@@ -256,50 +265,54 @@ export function Guards() {
                       <Body size="sm">{formatDate(guard.createdAt)}</Body>
                     </TableCell>
                     <TableCell className="px-6 py-4 text-right">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setEditTarget(guard)}
-                        className="border-transparent text-muted-foreground hover:text-foreground hover:bg-muted mr-2"
-                        title={t("guards.edit", "Edit guard")}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      {guard.isActive ? (
+                      {canManageGuards && (
                         <>
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() =>
-                              setResendOtpTarget({ id: guard.id, name: guard.name })
-                            }
+                            onClick={() => setEditTarget(guard)}
                             className="border-transparent text-muted-foreground hover:text-foreground hover:bg-muted mr-2"
-                            title={t("guards.resendOtp", "Resend login code")}
+                            title={t("guards.edit", "Edit guard")}
                           >
-                            <KeyRound className="h-4 w-4" />
+                            <Pencil className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setDeleteTarget({ id: guard.id, name: guard.name })}
-                            className="border-transparent text-muted-foreground hover:text-destructive hover:bg-destructive/10 hover:border-destructive/20"
-                            title={t("guards.deactivate", "Deactivate guard")}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {guard.isActive ? (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  setResendOtpTarget({ id: guard.id, name: guard.name })
+                                }
+                                className="border-transparent text-muted-foreground hover:text-foreground hover:bg-muted mr-2"
+                                title={t("guards.resendOtp", "Resend login code")}
+                              >
+                                <KeyRound className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setDeleteTarget({ id: guard.id, name: guard.name })}
+                                className="border-transparent text-muted-foreground hover:text-destructive hover:bg-destructive/10 hover:border-destructive/20"
+                                title={t("guards.deactivate", "Deactivate guard")}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                setReactivateTarget({ id: guard.id, name: guard.name })
+                              }
+                              className="border-transparent text-muted-foreground hover:text-foreground hover:bg-muted"
+                              title={t("guards.reactivate", "Reactivate guard")}
+                            >
+                              <RotateCcw className="h-4 w-4" />
+                            </Button>
+                          )}
                         </>
-                      ) : (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            setReactivateTarget({ id: guard.id, name: guard.name })
-                          }
-                          className="border-transparent text-muted-foreground hover:text-foreground hover:bg-muted"
-                          title={t("guards.reactivate", "Reactivate guard")}
-                        >
-                          <RotateCcw className="h-4 w-4" />
-                        </Button>
                       )}
                     </TableCell>
                   </TableRow>
