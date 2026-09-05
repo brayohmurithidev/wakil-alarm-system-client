@@ -1,5 +1,5 @@
 import { Cable, ChevronDown, ChevronLeft, ChevronRight, History, LogOut, Settings, ShieldUser, User, Users, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "react-router-dom";
 
@@ -40,7 +40,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
   const [settingsExpanded, setSettingsExpanded] = useState(
     () => location.pathname.startsWith("/settings"),
   );
-  // Integrations is a first-class MANAGE section, not a Settings child - see
+  // Integrations is a first-class SYSTEM entry, not a Settings child - see
   // routes/index.tsx, which moved its paths out from under /settings for
   // exactly this reason (so Settings never reads as "selected" while an
   // admin is actually managing integrations).
@@ -70,12 +70,18 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
   const alarmsNeedingAttention =
     alarms?.filter((a) => NEEDS_ATTENTION_STATUSES.has(a.status)).length ?? 0;
 
-  const navItems = [
-    {
-      label: t("sidebar.dashboard", "Dashboard"),
-      path: "/dashboard",
-      icon: <DashboardIcon />,
-    },
+  // Grouped by information architecture rather than one flat list - see the
+  // sidebar IA refresh: Dashboard stands alone, then OPERATIONS (day-to-day
+  // monitoring), PEOPLE (staff management, ADMIN-gated - mirrors the
+  // backend's requireRole(["ADMIN"]) on /users, see pages/Users.tsx), ACCOUNT
+  // (this admin's own settings), and SYSTEM (Integrations/Settings below).
+  const dashboardItem = {
+    label: t("sidebar.dashboard", "Dashboard"),
+    path: "/dashboard",
+    icon: <DashboardIcon />,
+  };
+
+  const operationsItems = [
     {
       label: t("sidebar.alarms", "Alarms"),
       path: "/alarms",
@@ -92,12 +98,20 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
       path: "/guards",
       icon: <ShieldUser />,
     },
-    {
-      label: t("sidebar.users", "Users"),
-      path: "/users",
-      icon: <Users />,
-      requiredRole: "ADMIN" as const,
-    },
+  ];
+
+  const peopleItems =
+    adminUser?.role === "ADMIN"
+      ? [
+          {
+            label: t("sidebar.users", "Users"),
+            path: "/users",
+            icon: <Users />,
+          },
+        ]
+      : [];
+
+  const accountItems = [
     {
       label: t("sidebar.profile", "Profile"),
       path: "/profile",
@@ -105,17 +119,87 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
     },
   ];
 
-  const filteredNavItems = navItems.filter((item) => {
-    if (!item.requiredRole) return true;
-    return adminUser?.role === item.requiredRole;
-  });
-
   const isActive = (path: string) => location.pathname === path;
   const isSettingsRoute = location.pathname.startsWith("/settings");
   const isIntegrationsRoute = location.pathname.startsWith("/integrations");
   const isAlarmSourcesRoute = location.pathname.startsWith(
     "/integrations/alarm-sources",
   );
+
+  // Shared row markup for every plain (non-expandable) destination, so
+  // Dashboard and the OPERATIONS/PEOPLE/ACCOUNT sections all render and
+  // behave identically instead of re-forking this block per section.
+  const renderNavItem = (item: {
+    label: string;
+    path: string;
+    icon: ReactNode;
+    badge?: number;
+  }) => {
+    const link = (
+      <Link
+        to={item.path}
+        onClick={onMobileClose}
+        aria-label={item.label}
+        className={`flex items-center gap-3 rounded-lg transition-colors ${
+          collapsed ? "justify-center px-0 py-3" : "px-4 py-3"
+        } ${
+          isActive(item.path)
+            ? "bg-primary text-primary-foreground"
+            : "hover:bg-muted text-foreground"
+        }`}
+      >
+        <span className="relative text-xl">
+          {item.icon}
+          {!!item.badge && (
+            <span
+              className={`absolute -right-1.5 -top-1.5 flex items-center justify-center rounded-full bg-alarm text-[10px] font-semibold text-white ${
+                collapsed
+                  ? "h-2.5 w-2.5"
+                  : item.badge > 9
+                    ? "h-4 min-w-4 px-1"
+                    : "h-3.5 w-3.5"
+              }`}
+              aria-hidden="true"
+            >
+              {!collapsed && (item.badge > 9 ? "9+" : item.badge)}
+            </span>
+          )}
+        </span>
+        {!collapsed && (
+          <Body
+            className={`font-medium ${
+              isActive(item.path) ? "text-primary-foreground" : ""
+            }`}
+          >
+            {item.label}
+          </Body>
+        )}
+        {!collapsed && !!item.badge && (
+          <span className="sr-only">{item.badge} alarms need attention</span>
+        )}
+      </Link>
+    );
+
+    return (
+      <Tooltip key={item.path}>
+        <TooltipTrigger asChild>{link}</TooltipTrigger>
+        <TooltipContent side="right" sideOffset={8}>
+          {item.label}
+        </TooltipContent>
+      </Tooltip>
+    );
+  };
+
+  // Muted, compact section heading - hidden entirely when collapsed (icons
+  // speak for themselves then) and never styled as if it were selectable.
+  const renderSectionLabel = (label: string) => {
+    if (collapsed) return null;
+    return (
+      <p className="px-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground/70">
+        {label}
+      </p>
+    );
+  };
 
   return (
     <>
@@ -169,184 +253,147 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
             </Button>
           </div>
 
-          <nav className="flex-1 overflow-y-auto p-4 space-y-2">
-            {filteredNavItems.map((item) => {
-              const link = (
-                <Link
-                  to={item.path}
-                  onClick={onMobileClose}
-                  aria-label={item.label}
-                  className={`flex items-center gap-3 rounded-lg transition-colors ${
-                    collapsed ? "justify-center px-0 py-3" : "px-4 py-3"
-                  } ${
-                    isActive(item.path)
-                      ? "bg-primary text-primary-foreground"
-                      : "hover:bg-muted text-foreground"
-                  }`}
-                >
-                  <span className="relative text-xl">
-                    {item.icon}
-                    {!!item.badge && (
-                      <span
-                        className={`absolute -right-1.5 -top-1.5 flex items-center justify-center rounded-full bg-alarm text-[10px] font-semibold text-white ${
-                          collapsed
-                            ? "h-2.5 w-2.5"
-                            : item.badge > 9
-                              ? "h-4 min-w-4 px-1"
-                              : "h-3.5 w-3.5"
-                        }`}
-                        aria-hidden="true"
-                      >
-                        {!collapsed && (item.badge > 9 ? "9+" : item.badge)}
-                      </span>
-                    )}
-                  </span>
-                  {!collapsed && (
-                    <Body
-                      className={`font-medium ${
-                        isActive(item.path) ? "text-primary-foreground" : ""
-                      }`}
-                    >
-                      {item.label}
-                    </Body>
-                  )}
-                  {!collapsed && !!item.badge && (
-                    <span className="sr-only">
-                      {item.badge} alarms need attention
-                    </span>
-                  )}
-                </Link>
-              );
+          <nav className="flex-1 overflow-y-auto p-4 space-y-4">
+            {/* Dashboard stands alone - it's the landing destination, not
+                part of any grouping. */}
+            <div className="space-y-1">{renderNavItem(dashboardItem)}</div>
 
-              return (
-                <Tooltip key={item.path}>
-                  <TooltipTrigger asChild>{link}</TooltipTrigger>
-                  <TooltipContent side="right" sideOffset={8}>
-                    {item.label}
-                  </TooltipContent>
-                </Tooltip>
-              );
-            })}
-            {adminUser?.isSuperAdmin && (
-              <div className="space-y-1 pt-2">
-                {!collapsed && (
-                  <p className="px-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground/70">
-                    Manage
-                  </p>
-                )}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      onClick={() => setIntegrationsExpanded((prev) => !prev)}
-                      aria-expanded={integrationsExpanded}
-                      aria-controls="integrations-navigation"
-                      aria-label="Integrations"
-                      className={`flex w-full items-center gap-3 rounded-lg transition-colors ${
-                        collapsed ? "justify-center px-0 py-3" : "px-4 py-3"
-                      } ${
-                        isIntegrationsRoute
-                          ? "bg-muted text-primary"
-                          : "text-foreground hover:bg-muted"
-                      }`}
-                    >
-                      <Cable className="h-5 w-5 shrink-0" />
-                      {!collapsed && (
-                        <>
-                          <Body className="flex-1 text-left font-medium">Integrations</Body>
-                          <ChevronDown
-                            className={`h-4 w-4 transition-transform ${integrationsExpanded ? "rotate-180" : ""}`}
-                            aria-hidden="true"
-                          />
-                        </>
-                      )}
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" sideOffset={8}>
-                    Integrations
-                  </TooltipContent>
-                </Tooltip>
+            <div className="space-y-1">
+              {renderSectionLabel("Operations")}
+              {operationsItems.map(renderNavItem)}
+            </div>
 
-                {!collapsed && integrationsExpanded && (
-                  <div
-                    id="integrations-navigation"
-                    className="ml-5 space-y-1 border-l border-border pl-3"
-                  >
-                    {/* Alarm Sources is the only Integrations destination that exists
-                        today - Overview/Webhooks/API Access are deliberately not
-                        listed here; adding them would be placeholder navigation with
-                        no page behind it. */}
-                    <Link
-                      to="/integrations/alarm-sources"
-                      onClick={onMobileClose}
-                      aria-current={isAlarmSourcesRoute ? "page" : undefined}
-                      className={`block rounded-md px-3 py-2 text-sm transition-colors ${
-                        isAlarmSourcesRoute
-                          ? "bg-primary/15 font-semibold text-primary"
-                          : "text-foreground hover:bg-muted"
-                      }`}
-                    >
-                      Alarm Sources
-                    </Link>
-                  </div>
-                )}
+            {/* PEOPLE is ADMIN-only (peopleItems is empty otherwise) - skip
+                the section entirely rather than showing an empty heading. */}
+            {peopleItems.length > 0 && (
+              <div className="space-y-1">
+                {renderSectionLabel("People")}
+                {peopleItems.map(renderNavItem)}
               </div>
             )}
 
-            <div className="space-y-1 pt-2">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      onClick={() => setSettingsExpanded((prev) => !prev)}
-                      aria-expanded={settingsExpanded}
-                      aria-controls="settings-navigation"
-                      aria-label="Settings"
-                      className={`flex w-full items-center gap-3 rounded-lg transition-colors ${
-                        collapsed ? "justify-center px-0 py-3" : "px-4 py-3"
-                      } ${
-                        isSettingsRoute
-                          ? "bg-muted text-primary"
-                          : "text-foreground hover:bg-muted"
-                      }`}
-                    >
-                      <Settings className="h-5 w-5 shrink-0" />
-                      {!collapsed && (
-                        <>
-                          <Body className="flex-1 text-left font-medium">Settings</Body>
-                          <ChevronDown
-                            className={`h-4 w-4 transition-transform ${settingsExpanded ? "rotate-180" : ""}`}
-                            aria-hidden="true"
-                          />
-                        </>
-                      )}
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" sideOffset={8}>
-                    Settings
-                  </TooltipContent>
-                </Tooltip>
+            <div className="space-y-1">
+              {renderSectionLabel("Account")}
+              {accountItems.map(renderNavItem)}
+            </div>
 
-                {!collapsed && settingsExpanded && (
-                  <div
-                    id="settings-navigation"
-                    className="ml-5 space-y-1 border-l border-border pl-3"
+            <div className="space-y-1">
+              {renderSectionLabel("System")}
+
+              {adminUser?.isSuperAdmin && (
+                <>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={() => setIntegrationsExpanded((prev) => !prev)}
+                        aria-expanded={integrationsExpanded}
+                        aria-controls="integrations-navigation"
+                        aria-label="Integrations"
+                        className={`flex w-full items-center gap-3 rounded-lg transition-colors ${
+                          collapsed ? "justify-center px-0 py-3" : "px-4 py-3"
+                        } ${
+                          isIntegrationsRoute
+                            ? "bg-muted text-primary"
+                            : "text-foreground hover:bg-muted"
+                        }`}
+                      >
+                        <Cable className="h-5 w-5 shrink-0" />
+                        {!collapsed && (
+                          <>
+                            <Body className="flex-1 text-left font-medium">Integrations</Body>
+                            <ChevronDown
+                              className={`h-4 w-4 transition-transform ${integrationsExpanded ? "rotate-180" : ""}`}
+                              aria-hidden="true"
+                            />
+                          </>
+                        )}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" sideOffset={8}>
+                      Integrations
+                    </TooltipContent>
+                  </Tooltip>
+
+                  {!collapsed && integrationsExpanded && (
+                    <div
+                      id="integrations-navigation"
+                      className="ml-5 space-y-1 border-l border-border pl-3"
+                    >
+                      {/* Alarm Sources is the only Integrations destination that exists
+                          today - Overview/Webhooks/API Access are deliberately not
+                          listed here; adding them would be placeholder navigation with
+                          no page behind it. */}
+                      <Link
+                        to="/integrations/alarm-sources"
+                        onClick={onMobileClose}
+                        aria-current={isAlarmSourcesRoute ? "page" : undefined}
+                        className={`block rounded-md px-3 py-2 text-sm transition-colors ${
+                          isAlarmSourcesRoute
+                            ? "bg-primary/15 font-semibold text-primary"
+                            : "text-foreground hover:bg-muted"
+                        }`}
+                      >
+                        Alarm Sources
+                      </Link>
+                    </div>
+                  )}
+                </>
+              )}
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => setSettingsExpanded((prev) => !prev)}
+                    aria-expanded={settingsExpanded}
+                    aria-controls="settings-navigation"
+                    aria-label="Settings"
+                    className={`flex w-full items-center gap-3 rounded-lg transition-colors ${
+                      collapsed ? "justify-center px-0 py-3" : "px-4 py-3"
+                    } ${
+                      isSettingsRoute
+                        ? "bg-muted text-primary"
+                        : "text-foreground hover:bg-muted"
+                    }`}
                   >
-                    <span
-                      aria-disabled="true"
-                      className="block cursor-not-allowed rounded-md px-3 py-2 text-sm text-muted-foreground/60"
-                    >
-                      General
-                    </span>
-                    <Link
-                      to="/profile"
-                      onClick={onMobileClose}
-                      className="block rounded-md px-3 py-2 text-sm text-foreground transition-colors hover:bg-muted"
-                    >
-                      Account &amp; Security
-                    </Link>
-                  </div>
-                )}
+                    <Settings className="h-5 w-5 shrink-0" />
+                    {!collapsed && (
+                      <>
+                        <Body className="flex-1 text-left font-medium">Settings</Body>
+                        <ChevronDown
+                          className={`h-4 w-4 transition-transform ${settingsExpanded ? "rotate-180" : ""}`}
+                          aria-hidden="true"
+                        />
+                      </>
+                    )}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" sideOffset={8}>
+                  Settings
+                </TooltipContent>
+              </Tooltip>
+
+              {!collapsed && settingsExpanded && (
+                <div
+                  id="settings-navigation"
+                  className="ml-5 space-y-1 border-l border-border pl-3"
+                >
+                  <span
+                    aria-disabled="true"
+                    className="block cursor-not-allowed rounded-md px-3 py-2 text-sm text-muted-foreground/60"
+                  >
+                    General
+                  </span>
+                  <Link
+                    to="/profile"
+                    onClick={onMobileClose}
+                    className="block rounded-md px-3 py-2 text-sm text-foreground transition-colors hover:bg-muted"
+                  >
+                    Account &amp; Security
+                  </Link>
+                </div>
+              )}
             </div>
           </nav>
 
