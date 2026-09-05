@@ -11,7 +11,7 @@ import {
   FormInput,
   FormLabel,
 } from "@/components/FormGroup/FormGroup";
-import { Button } from "@/components/ui";
+import { Body, Button } from "@/components/ui";
 import {
   Dialog,
   DialogContent,
@@ -26,50 +26,43 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/Select";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  assignableRoles,
+  ROLE_DESCRIPTIONS,
+  ROLE_LABEL,
+} from "@/lib/adminUserManagementPermissions";
 
 type CreateUserDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 };
 
+const EMPTY_FORM = { email: "", name: "", phone: "", role: "DISPATCHER" as AdminRole };
+
 export function CreateUserDialog({
   open,
   onOpenChange,
 }: CreateUserDialogProps) {
   const { t } = useTranslation();
+  const { adminUser } = useAuth();
   const { mutate: createUser, isPending, error } = useCreateUser();
 
-  const [formData, setFormData] = useState({
-    email: "",
-    name: "",
-    phone: "",
-    role: "DISPATCHER" as AdminRole,
-  });
+  const [formData, setFormData] = useState(EMPTY_FORM);
 
-  const roleOptions = [
-    { value: "DISPATCHER", label: "Dispatcher" },
-    { value: "SUPERVISOR", label: "Supervisor" },
-    { value: "ADMIN", label: "Admin" },
-  ];
+  // Phase A's hierarchy, mirrored client-side: an ordinary Admin never sees
+  // "Admin" as an option in the first place, rather than seeing it and
+  // hitting a 403 - the backend remains the authoritative gate regardless
+  // (see adminUserManagementPermissions.ts's header comment).
+  const roleOptions = adminUser ? assignableRoles(adminUser) : [];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     createUser(formData, {
       onSuccess: () => {
-        notify(
-          t(
-            "users.form.success",
-            "User created! An activation email has been sent.",
-          ),
-          { type: "success" },
-        );
+        notify(`Invitation sent to ${formData.email}.`, { type: "success" });
         onOpenChange(false);
-        setFormData({
-          email: "",
-          name: "",
-          phone: "",
-          role: "DISPATCHER",
-        });
+        setFormData(EMPTY_FORM);
       },
       onError: (error: any) => {
         notify(
@@ -84,12 +77,7 @@ export function CreateUserDialog({
   const handleClose = () => {
     if (!isPending) {
       onOpenChange(false);
-      setFormData({
-        email: "",
-        name: "",
-        phone: "",
-        role: "DISPATCHER",
-      });
+      setFormData(EMPTY_FORM);
     }
   };
 
@@ -97,14 +85,14 @@ export function CreateUserDialog({
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="">
         <DialogHeader>
-          <DialogTitle className="text-xl text-gray-200">
-            {t("users.createUser", "Create New User")}
+          <DialogTitle className="text-xl">
+            {t("users.createUser", "Add User")}
           </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <FormGroup>
-            <FormLabel htmlFor="name">{t("users.form.name", "Name")}</FormLabel>
+            <FormLabel htmlFor="name">{t("users.form.name", "Full Name")}</FormLabel>
             <FormInput
               id="name"
               type="text"
@@ -149,13 +137,6 @@ export function CreateUserDialog({
             />
           </FormGroup>
 
-          <p className="text-sm text-muted-foreground">
-            {t(
-              "users.form.activationNotice",
-              "An activation email will be sent so this person can choose their own password.",
-            )}
-          </p>
-
           <FormGroup>
             <FormLabel htmlFor="role">{t("users.form.role", "Role")}</FormLabel>
             <Select
@@ -169,14 +150,24 @@ export function CreateUserDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {roleOptions.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
+                {roleOptions.map((role) => (
+                  <SelectItem key={role} value={role}>
+                    {ROLE_LABEL[role]}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            <Body size="sm" className="mt-2 text-muted-foreground">
+              {ROLE_DESCRIPTIONS[formData.role]}
+            </Body>
           </FormGroup>
+
+          <p className="rounded-lg border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+            {t(
+              "users.form.activationNotice",
+              "The user will receive an invitation to create their password and activate their account.",
+            )}
+          </p>
 
           {error && (
             <FormError>
@@ -196,7 +187,7 @@ export function CreateUserDialog({
             </Button>
             <Button type="submit" disabled={isPending}>
               {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {t("users.form.create", "Create User")}
+              {t("users.form.create", "Send Invitation")}
             </Button>
           </DialogFooter>
         </form>
