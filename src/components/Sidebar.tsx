@@ -1,4 +1,4 @@
-import { Cable, ChevronDown, ChevronLeft, ChevronRight, History, LogOut, Settings, ShieldUser, User, Users, X } from "lucide-react";
+import { Cable, ChevronDown, ChevronLeft, ChevronRight, History, LogOut, ShieldUser, User, Users, X } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "react-router-dom";
@@ -37,13 +37,8 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(
     () => localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true",
   );
-  const [settingsExpanded, setSettingsExpanded] = useState(
-    () => location.pathname.startsWith("/settings"),
-  );
-  // Integrations is a first-class SYSTEM entry, not a Settings child - see
-  // routes/index.tsx, which moved its paths out from under /settings for
-  // exactly this reason (so Settings never reads as "selected" while an
-  // admin is actually managing integrations).
+  // Integrations is a first-class SYSTEM entry - see routes/index.tsx, which
+  // moved its paths out from under /settings for exactly this reason.
   const [integrationsExpanded, setIntegrationsExpanded] = useState(
     () => location.pathname.startsWith("/integrations"),
   );
@@ -51,14 +46,6 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
   useEffect(() => {
     localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(collapsed));
   }, [collapsed]);
-
-  useEffect(() => {
-    if (location.pathname.startsWith("/settings")) {
-      // Keep deep-linked settings routes discoverable after client-side navigation.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setSettingsExpanded(true);
-    }
-  }, [location.pathname]);
 
   useEffect(() => {
     if (location.pathname.startsWith("/integrations")) {
@@ -74,7 +61,10 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
   // sidebar IA refresh: Dashboard stands alone, then OPERATIONS (day-to-day
   // monitoring), PEOPLE (staff management, ADMIN-gated - mirrors the
   // backend's requireRole(["ADMIN"]) on /users, see pages/Users.tsx), ACCOUNT
-  // (this admin's own settings), and SYSTEM (Integrations/Settings below).
+  // (this admin's own settings), and SYSTEM (Integrations below - Super
+  // Admin only). There's no standalone Settings entry: it had no landing
+  // page of its own, and its one real child (Account & Security) pointed at
+  // /profile - an exact duplicate of the ACCOUNT section's Profile link.
   const dashboardItem = {
     label: t("sidebar.dashboard", "Dashboard"),
     path: "/dashboard",
@@ -120,7 +110,6 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
   ];
 
   const isActive = (path: string) => location.pathname === path;
-  const isSettingsRoute = location.pathname.startsWith("/settings");
   const isIntegrationsRoute = location.pathname.startsWith("/integrations");
   const isAlarmSourcesRoute = location.pathname.startsWith(
     "/integrations/alarm-sources",
@@ -277,124 +266,71 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
               {accountItems.map(renderNavItem)}
             </div>
 
-            <div className="space-y-1">
-              {renderSectionLabel("System")}
+            {/* SYSTEM currently holds only Integrations (Super Admin-only) -
+                skip the section entirely for everyone else rather than
+                showing an empty heading. */}
+            {adminUser?.isSuperAdmin && (
+              <div className="space-y-1">
+                {renderSectionLabel("System")}
 
-              {adminUser?.isSuperAdmin && (
-                <>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        onClick={() => setIntegrationsExpanded((prev) => !prev)}
-                        aria-expanded={integrationsExpanded}
-                        aria-controls="integrations-navigation"
-                        aria-label="Integrations"
-                        className={`flex w-full items-center gap-3 rounded-lg transition-colors ${
-                          collapsed ? "justify-center px-0 py-3" : "px-4 py-3"
-                        } ${
-                          isIntegrationsRoute
-                            ? "bg-muted text-primary"
-                            : "text-foreground hover:bg-muted"
-                        }`}
-                      >
-                        <Cable className="h-5 w-5 shrink-0" />
-                        {!collapsed && (
-                          <>
-                            <Body className="flex-1 text-left font-medium">Integrations</Body>
-                            <ChevronDown
-                              className={`h-4 w-4 transition-transform ${integrationsExpanded ? "rotate-180" : ""}`}
-                              aria-hidden="true"
-                            />
-                          </>
-                        )}
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="right" sideOffset={8}>
-                      Integrations
-                    </TooltipContent>
-                  </Tooltip>
-
-                  {!collapsed && integrationsExpanded && (
-                    <div
-                      id="integrations-navigation"
-                      className="ml-5 space-y-1 border-l border-border pl-3"
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => setIntegrationsExpanded((prev) => !prev)}
+                      aria-expanded={integrationsExpanded}
+                      aria-controls="integrations-navigation"
+                      aria-label="Integrations"
+                      className={`flex w-full items-center gap-3 rounded-lg transition-colors ${
+                        collapsed ? "justify-center px-0 py-3" : "px-4 py-3"
+                      } ${
+                        isIntegrationsRoute
+                          ? "bg-muted text-primary"
+                          : "text-foreground hover:bg-muted"
+                      }`}
                     >
-                      {/* Alarm Sources is the only Integrations destination that exists
-                          today - Overview/Webhooks/API Access are deliberately not
-                          listed here; adding them would be placeholder navigation with
-                          no page behind it. */}
-                      <Link
-                        to="/integrations/alarm-sources"
-                        onClick={onMobileClose}
-                        aria-current={isAlarmSourcesRoute ? "page" : undefined}
-                        className={`block rounded-md px-3 py-2 text-sm transition-colors ${
-                          isAlarmSourcesRoute
-                            ? "bg-primary/15 font-semibold text-primary"
-                            : "text-foreground hover:bg-muted"
-                        }`}
-                      >
-                        Alarm Sources
-                      </Link>
-                    </div>
-                  )}
-                </>
-              )}
+                      <Cable className="h-5 w-5 shrink-0" />
+                      {!collapsed && (
+                        <>
+                          <Body className="flex-1 text-left font-medium">Integrations</Body>
+                          <ChevronDown
+                            className={`h-4 w-4 transition-transform ${integrationsExpanded ? "rotate-180" : ""}`}
+                            aria-hidden="true"
+                          />
+                        </>
+                      )}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" sideOffset={8}>
+                    Integrations
+                  </TooltipContent>
+                </Tooltip>
 
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={() => setSettingsExpanded((prev) => !prev)}
-                    aria-expanded={settingsExpanded}
-                    aria-controls="settings-navigation"
-                    aria-label="Settings"
-                    className={`flex w-full items-center gap-3 rounded-lg transition-colors ${
-                      collapsed ? "justify-center px-0 py-3" : "px-4 py-3"
-                    } ${
-                      isSettingsRoute
-                        ? "bg-muted text-primary"
-                        : "text-foreground hover:bg-muted"
-                    }`}
+                {!collapsed && integrationsExpanded && (
+                  <div
+                    id="integrations-navigation"
+                    className="ml-5 space-y-1 border-l border-border pl-3"
                   >
-                    <Settings className="h-5 w-5 shrink-0" />
-                    {!collapsed && (
-                      <>
-                        <Body className="flex-1 text-left font-medium">Settings</Body>
-                        <ChevronDown
-                          className={`h-4 w-4 transition-transform ${settingsExpanded ? "rotate-180" : ""}`}
-                          aria-hidden="true"
-                        />
-                      </>
-                    )}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="right" sideOffset={8}>
-                  Settings
-                </TooltipContent>
-              </Tooltip>
-
-              {!collapsed && settingsExpanded && (
-                <div
-                  id="settings-navigation"
-                  className="ml-5 space-y-1 border-l border-border pl-3"
-                >
-                  <span
-                    aria-disabled="true"
-                    className="block cursor-not-allowed rounded-md px-3 py-2 text-sm text-muted-foreground/60"
-                  >
-                    General
-                  </span>
-                  <Link
-                    to="/profile"
-                    onClick={onMobileClose}
-                    className="block rounded-md px-3 py-2 text-sm text-foreground transition-colors hover:bg-muted"
-                  >
-                    Account &amp; Security
-                  </Link>
-                </div>
-              )}
-            </div>
+                    {/* Alarm Sources is the only Integrations destination that exists
+                        today - Overview/Webhooks/API Access are deliberately not
+                        listed here; adding them would be placeholder navigation with
+                        no page behind it. */}
+                    <Link
+                      to="/integrations/alarm-sources"
+                      onClick={onMobileClose}
+                      aria-current={isAlarmSourcesRoute ? "page" : undefined}
+                      className={`block rounded-md px-3 py-2 text-sm transition-colors ${
+                        isAlarmSourcesRoute
+                          ? "bg-primary/15 font-semibold text-primary"
+                          : "text-foreground hover:bg-muted"
+                      }`}
+                    >
+                      Alarm Sources
+                    </Link>
+                  </div>
+                )}
+              </div>
+            )}
           </nav>
 
           <div className="p-4 border-t border-border space-y-3">
