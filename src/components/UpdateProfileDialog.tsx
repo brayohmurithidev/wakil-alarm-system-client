@@ -1,3 +1,4 @@
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
@@ -21,19 +22,18 @@ import {
   DialogTitle,
 } from "@/components/ui/Dialog/dialog";
 import { useAuth } from "@/contexts/AuthContext";
+import { updateProfileFormSchema, type UpdateProfileFormValues } from "@/lib/validation/adminUserForms";
+import { PHONE_INPUT_PROPS } from "@/lib/validation/phone";
 
 type UpdateProfileDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 };
 
-type UpdateProfileFormData = {
-  email: string;
-  password: string;
-  name: string;
-  phone: string;
-};
-
+// Self-service - includes an optional password field, unrelated to (and not
+// touched by) the Phase C admin-management password removal. Otherwise
+// shares updateProfileFormSchema's name/email/phone rules exactly with
+// Create/Edit User - same phone contract everywhere it's entered.
 export function UpdateProfileDialog({
   open,
   onOpenChange,
@@ -48,7 +48,8 @@ export function UpdateProfileDialog({
     handleSubmit,
     reset,
     formState: { errors },
-  } = useForm<UpdateProfileFormData>({
+  } = useForm<UpdateProfileFormValues>({
+    resolver: zodResolver(updateProfileFormSchema),
     defaultValues: {
       email: "",
       password: "",
@@ -68,7 +69,9 @@ export function UpdateProfileDialog({
     }
   }, [adminUser, open, reset]);
 
-  const onSubmit = (data: UpdateProfileFormData) => {
+  const onSubmit = (data: UpdateProfileFormValues) => {
+    // data.phone is already normalized to canonical E.164 by
+    // phoneFieldSchema's transform - this is what's actually submitted.
     const updateData: {
       email: string;
       name: string;
@@ -126,19 +129,12 @@ export function UpdateProfileDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
           <FormGroup>
             <FormLabel htmlFor="name">
               {t("profile.form.name", "Name")}
             </FormLabel>
-            <FormInput
-              id="name"
-              type="text"
-              {...register("name", {
-                required: t("profile.form.nameRequired", "Name is required"),
-              })}
-              disabled={isPending}
-            />
+            <FormInput id="name" type="text" {...register("name")} disabled={isPending} />
             {errors.name && <FormError>{errors.name.message}</FormError>}
           </FormGroup>
 
@@ -149,16 +145,8 @@ export function UpdateProfileDialog({
             <FormInput
               id="email"
               type="email"
-              {...register("email", {
-                required: t("profile.form.emailRequired", "Email is required"),
-                pattern: {
-                  value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                  message: t(
-                    "profile.form.emailInvalid",
-                    "Invalid email address",
-                  ),
-                },
-              })}
+              autoComplete="email"
+              {...register("email")}
               disabled={isPending}
             />
             {errors.email && <FormError>{errors.email.message}</FormError>}
@@ -168,14 +156,7 @@ export function UpdateProfileDialog({
             <FormLabel htmlFor="phone">
               {t("profile.form.phone", "Phone")}
             </FormLabel>
-            <FormInput
-              id="phone"
-              type="tel"
-              {...register("phone", {
-                required: t("profile.form.phoneRequired", "Phone is required"),
-              })}
-              disabled={isPending}
-            />
+            <FormInput id="phone" {...PHONE_INPUT_PROPS} {...register("phone")} disabled={isPending} />
             {errors.phone && <FormError>{errors.phone.message}</FormError>}
           </FormGroup>
 
@@ -187,15 +168,8 @@ export function UpdateProfileDialog({
             <FormInput
               id="password"
               type="password"
-              {...register("password", {
-                minLength: {
-                  value: 6,
-                  message: t(
-                    "profile.form.passwordMinLength",
-                    "Password must be at least 6 characters",
-                  ),
-                },
-              })}
+              autoComplete="new-password"
+              {...register("password")}
               disabled={isPending}
               placeholder={t(
                 "profile.form.passwordPlaceholder",

@@ -1,10 +1,11 @@
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 
 import { useUpdateUser } from "@/api/hooks/useUpdateUser";
-import type { AdminRole, AdminUser } from "@/api/types";
+import type { AdminUser } from "@/api/types";
 import { notify } from "@/components/Alert/notify";
 import {
   FormError,
@@ -37,6 +38,8 @@ import {
   ROLE_LABEL,
 } from "@/lib/adminUserManagementPermissions";
 import { deriveAccountStatus } from "@/lib/userAccountStatus";
+import { adminUserFormSchema, type AdminUserFormValues } from "@/lib/validation/adminUserForms";
+import { PHONE_INPUT_PROPS } from "@/lib/validation/phone";
 
 type UpdateUserDialogProps = {
   open: boolean;
@@ -52,14 +55,9 @@ type UpdateUserDialogProps = {
 // password box removed". Security-sensitive state (role, active/disabled)
 // gets its own section and, for disable/reactivate, its own separately
 // confirmed action - see this file's onRequestDisable prop and
-// handleReactivate below.
-type UpdateUserFormData = {
-  email: string;
-  name: string;
-  phone: string;
-  role: AdminRole;
-};
-
+// handleReactivate below. Shares adminUserFormSchema (name/email/phone/
+// role) with CreateUserDialog exactly - same validation, same phone
+// contract, no separate regex.
 export function UpdateUserDialog({
   open,
   onOpenChange,
@@ -77,7 +75,8 @@ export function UpdateUserDialog({
     reset,
     control,
     formState: { errors },
-  } = useForm<UpdateUserFormData>({
+  } = useForm<AdminUserFormValues>({
+    resolver: zodResolver(adminUserFormSchema),
     defaultValues: { email: "", name: "", phone: "", role: "DISPATCHER" },
   });
 
@@ -98,7 +97,9 @@ export function UpdateUserDialog({
   const status = deriveAccountStatus(user);
   const isSelf = adminUser?.id === user.id;
 
-  const onSubmit = (data: UpdateUserFormData) => {
+  const onSubmit = (data: AdminUserFormValues) => {
+    // data.phone is already normalized to canonical E.164 by
+    // phoneFieldSchema's transform - this is what's actually submitted.
     updateUser(
       { id: user.id, email: data.email, name: data.name, phone: data.phone, role: data.role },
       {
@@ -129,7 +130,7 @@ export function UpdateUserDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="">
+      <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl">{t("users.updateUser", "Edit User")}</DialogTitle>
           <DialogDescription>{user.name} &middot; {user.email}</DialogDescription>
@@ -142,7 +143,7 @@ export function UpdateUserDialog({
               : "This account is protected and can't be managed here."}
           </p>
         ) : (
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" noValidate>
             <section className="space-y-4">
               <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 {t("users.form.sectionProfile", "Profile")}
@@ -150,12 +151,7 @@ export function UpdateUserDialog({
 
               <FormGroup>
                 <FormLabel htmlFor="name">{t("users.form.name", "Name")}</FormLabel>
-                <FormInput
-                  id="name"
-                  type="text"
-                  {...register("name", { required: t("users.form.nameRequired", "Name is required") })}
-                  disabled={isPending}
-                />
+                <FormInput id="name" type="text" {...register("name")} disabled={isPending} />
                 {errors.name && <FormError>{errors.name.message}</FormError>}
               </FormGroup>
 
@@ -164,13 +160,8 @@ export function UpdateUserDialog({
                 <FormInput
                   id="email"
                   type="email"
-                  {...register("email", {
-                    required: t("users.form.emailRequired", "Email is required"),
-                    pattern: {
-                      value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                      message: t("users.form.emailInvalid", "Invalid email address"),
-                    },
-                  })}
+                  autoComplete="email"
+                  {...register("email")}
                   disabled={isPending}
                 />
                 {errors.email && <FormError>{errors.email.message}</FormError>}
@@ -178,12 +169,7 @@ export function UpdateUserDialog({
 
               <FormGroup>
                 <FormLabel htmlFor="phone">{t("users.form.phone", "Phone")}</FormLabel>
-                <FormInput
-                  id="phone"
-                  type="tel"
-                  {...register("phone", { required: t("users.form.phoneRequired", "Phone is required") })}
-                  disabled={isPending}
-                />
+                <FormInput id="phone" {...PHONE_INPUT_PROPS} {...register("phone")} disabled={isPending} />
                 {errors.phone && <FormError>{errors.phone.message}</FormError>}
               </FormGroup>
             </section>
@@ -197,7 +183,6 @@ export function UpdateUserDialog({
                 <Controller
                   name="role"
                   control={control}
-                  rules={{ required: t("users.form.roleRequired", "Role is required") }}
                   render={({ field }) => (
                     <>
                       <Select value={field.value} onValueChange={field.onChange} disabled={isPending}>
