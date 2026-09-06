@@ -1,3 +1,4 @@
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
@@ -20,17 +21,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/Dialog/dialog";
+import {
+  guardEditFormSchema,
+  type GuardEditFormValues,
+} from "@/lib/validation/guardForms";
+import { PHONE_INPUT_PROPS } from "@/lib/validation/phone";
 
 type EditGuardDialogProps = {
   guard: Guard | null;
   onOpenChange: (open: boolean) => void;
-};
-
-type EditGuardFormData = {
-  name: string;
-  phone: string;
-  email: string;
-  rank: string;
 };
 
 export function EditGuardDialog({ guard, onOpenChange }: EditGuardDialogProps) {
@@ -43,7 +42,8 @@ export function EditGuardDialog({ guard, onOpenChange }: EditGuardDialogProps) {
     handleSubmit,
     reset,
     formState: { errors },
-  } = useForm<EditGuardFormData>({
+  } = useForm<GuardEditFormValues>({
+    resolver: zodResolver(guardEditFormSchema),
     defaultValues: { name: "", phone: "", email: "", rank: "" },
   });
 
@@ -60,7 +60,7 @@ export function EditGuardDialog({ guard, onOpenChange }: EditGuardDialogProps) {
     }
   }, [guard, reset, resetMutation]);
 
-  const onSubmit = (data: EditGuardFormData) => {
+  const onSubmit = (data: GuardEditFormValues) => {
     if (!guard) return;
     updateGuard(
       {
@@ -101,7 +101,7 @@ export function EditGuardDialog({ guard, onOpenChange }: EditGuardDialogProps) {
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
           <FormGroup>
             <FormLabel htmlFor="edit-guard-name">
               {t("guards.form.name", "Name")}
@@ -109,9 +109,7 @@ export function EditGuardDialog({ guard, onOpenChange }: EditGuardDialogProps) {
             <FormInput
               id="edit-guard-name"
               type="text"
-              {...register("name", {
-                required: t("guards.form.nameRequired", "Name is required"),
-              })}
+              {...register("name")}
               disabled={isPending}
             />
             {errors.name && <FormError>{errors.name.message}</FormError>}
@@ -123,17 +121,8 @@ export function EditGuardDialog({ guard, onOpenChange }: EditGuardDialogProps) {
             </FormLabel>
             <FormInput
               id="edit-guard-phone"
-              type="tel"
-              {...register("phone", {
-                required: t("guards.form.phoneRequired", "Phone is required"),
-                pattern: {
-                  value: /^\+?[0-9\s-]{7,15}$/,
-                  message: t(
-                    "guards.form.phoneInvalid",
-                    "Invalid phone number",
-                  ),
-                },
-              })}
+              {...PHONE_INPUT_PROPS}
+              {...register("phone")}
               disabled={isPending}
             />
             {errors.phone && <FormError>{errors.phone.message}</FormError>}
@@ -146,16 +135,8 @@ export function EditGuardDialog({ guard, onOpenChange }: EditGuardDialogProps) {
             <FormInput
               id="edit-guard-email"
               type="email"
-              {...register("email", {
-                required: t("guards.form.emailRequired", "Email is required"),
-                pattern: {
-                  value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                  message: t(
-                    "guards.form.emailInvalid",
-                    "Invalid email address",
-                  ),
-                },
-              })}
+              autoComplete="email"
+              {...register("email")}
               disabled={isPending}
             />
             {errors.email && <FormError>{errors.email.message}</FormError>}

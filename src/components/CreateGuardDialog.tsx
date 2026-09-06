@@ -1,3 +1,4 @@
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
@@ -18,17 +19,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/Dialog/dialog";
+import {
+  guardCreateFormSchema,
+  type GuardCreateFormValues,
+} from "@/lib/validation/guardForms";
+import { PHONE_INPUT_PROPS } from "@/lib/validation/phone";
 
 type CreateGuardDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 };
 
-type CreateGuardFormData = {
-  name: string;
-  phone: string;
-  email: string;
-};
+const EMPTY_FORM: GuardCreateFormValues = { name: "", phone: "", email: "" };
 
 export function CreateGuardDialog({
   open,
@@ -42,16 +44,21 @@ export function CreateGuardDialog({
     handleSubmit,
     reset,
     formState: { errors },
-  } = useForm<CreateGuardFormData>({
-    defaultValues: { name: "", phone: "", email: "" },
+  } = useForm<GuardCreateFormValues>({
+    resolver: zodResolver(guardCreateFormSchema),
+    defaultValues: EMPTY_FORM,
   });
 
-  const onSubmit = (data: CreateGuardFormData) => {
+  const onSubmit = (data: GuardCreateFormValues) => {
+    // data.phone is already normalized E.164 (phoneFieldSchema's
+    // transform) and data.email already trimmed+lowercased
+    // (guardEmailSchema) - what's submitted is exactly what the backend
+    // would itself normalize to (lib/guardIdentity.ts, API repo).
     createGuard(data, {
       onSuccess: (response) => {
         notify(response.message, { type: "success" });
         onOpenChange(false);
-        reset();
+        reset(EMPTY_FORM);
       },
       onError: (err: any) => {
         notify(
@@ -66,7 +73,7 @@ export function CreateGuardDialog({
   const handleClose = () => {
     if (!isPending) {
       onOpenChange(false);
-      reset();
+      reset(EMPTY_FORM);
     }
   };
 
@@ -79,7 +86,7 @@ export function CreateGuardDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
           <FormGroup>
             <FormLabel htmlFor="guard-name">
               {t("guards.form.name", "Name")}
@@ -87,9 +94,7 @@ export function CreateGuardDialog({
             <FormInput
               id="guard-name"
               type="text"
-              {...register("name", {
-                required: t("guards.form.nameRequired", "Name is required"),
-              })}
+              {...register("name")}
               disabled={isPending}
             />
             {errors.name && <FormError>{errors.name.message}</FormError>}
@@ -101,17 +106,8 @@ export function CreateGuardDialog({
             </FormLabel>
             <FormInput
               id="guard-phone"
-              type="tel"
-              {...register("phone", {
-                required: t("guards.form.phoneRequired", "Phone is required"),
-                pattern: {
-                  value: /^\+?[0-9\s-]{7,15}$/,
-                  message: t(
-                    "guards.form.phoneInvalid",
-                    "Invalid phone number",
-                  ),
-                },
-              })}
+              {...PHONE_INPUT_PROPS}
+              {...register("phone")}
               disabled={isPending}
             />
             {errors.phone && <FormError>{errors.phone.message}</FormError>}
@@ -124,16 +120,8 @@ export function CreateGuardDialog({
             <FormInput
               id="guard-email"
               type="email"
-              {...register("email", {
-                required: t("guards.form.emailRequired", "Email is required"),
-                pattern: {
-                  value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                  message: t(
-                    "guards.form.emailInvalid",
-                    "Invalid email address",
-                  ),
-                },
-              })}
+              autoComplete="email"
+              {...register("email")}
               disabled={isPending}
             />
             {errors.email && <FormError>{errors.email.message}</FormError>}

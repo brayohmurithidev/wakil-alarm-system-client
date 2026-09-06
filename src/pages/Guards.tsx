@@ -278,17 +278,26 @@ export function Guards() {
                           </Button>
                           {guard.isActive ? (
                             <>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() =>
-                                  setResendOtpTarget({ id: guard.id, name: guard.name })
-                                }
-                                className="border-transparent text-muted-foreground hover:text-foreground hover:bg-muted mr-2"
-                                title={t("guards.resendOtp", "Resend login code")}
-                              >
-                                <KeyRound className="h-4 w-4" />
-                              </Button>
+                              {/* Guard Account Phase 3: the backend now
+                                  rejects resend-otp once a guard has a
+                                  permanent password (409) - matching that
+                                  here, rather than showing an action that
+                                  would always fail once setup is done.
+                                  Backend enforcement remains authoritative;
+                                  this is UI consistency only. */}
+                              {guard.mustChangePassword && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() =>
+                                    setResendOtpTarget({ id: guard.id, name: guard.name })
+                                  }
+                                  className="border-transparent text-muted-foreground hover:text-foreground hover:bg-muted mr-2"
+                                  title={t("guards.resendOtp", "Resend login code")}
+                                >
+                                  <KeyRound className="h-4 w-4" />
+                                </Button>
+                              )}
                               <Button
                                 variant="outline"
                                 size="sm"
