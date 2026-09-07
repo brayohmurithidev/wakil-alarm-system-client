@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 
+import type { UpdateGuardResponse } from "@/api/hooks/useUpdateGuard";
 import { useUpdateGuard } from "@/api/hooks/useUpdateGuard";
 import type { Guard } from "@/api/types";
 import { notify } from "@/components/Alert/notify";
@@ -31,6 +32,34 @@ type EditGuardDialogProps = {
   guard: Guard | null;
   onOpenChange: (open: boolean) => void;
 };
+
+// Guard Onboarding Acceptance Fix (Failure 3) - the actual PATCH-response
+// handling, extracted out of the onSubmit closure so it can be exercised
+// directly by a test with a mocked `notify`/`onOpenChange`, not only
+// indirectly through a rendered form (this repo has no component-render
+// test harness - see guardUpdateSuccess.test.ts for why this shape, not a
+// component test, is what "focused tests on the actual mutation/response
+// handling" means here). Behavior is unchanged from what onSuccess did
+// inline before this refactor - only the plumbing moved.
+export function handleGuardUpdateSuccess(
+  response: UpdateGuardResponse,
+  deps: {
+    notify: typeof notify;
+    onOpenChange: (open: boolean) => void;
+  },
+): void {
+  deps.notify(response.message, { type: "success" });
+  // A separate, distinctly-typed toast so this reads as "one more thing to
+  // do", not part of the plain success confirmation. autoClose: false
+  // keeps it on screen until the admin explicitly dismisses it - the
+  // acceptance criteria requires a "clearly visible" message, and the
+  // default 6s auto-close (shared with every other toast, stacked right
+  // under the success one) wasn't a reliable way to guarantee that.
+  if (response.emailChangeNotice) {
+    deps.notify(response.emailChangeNotice, { type: "warning", autoClose: false });
+  }
+  deps.onOpenChange(false);
+}
 
 export function EditGuardDialog({ guard, onOpenChange }: EditGuardDialogProps) {
   const { t } = useTranslation();
@@ -71,16 +100,7 @@ export function EditGuardDialog({ guard, onOpenChange }: EditGuardDialogProps) {
         rank: data.rank || undefined,
       },
       {
-        onSuccess: (response) => {
-          notify(response.message, { type: "success" });
-          // Guard Account Phase 4 - a separate, distinctly-typed toast so
-          // this reads as "one more thing to do", not part of the plain
-          // success confirmation the admin might glance past.
-          if (response.emailChangeNotice) {
-            notify(response.emailChangeNotice, { type: "warning" });
-          }
-          onOpenChange(false);
-        },
+        onSuccess: (response) => handleGuardUpdateSuccess(response, { notify, onOpenChange }),
         onError: (err: any) => {
           notify(
             err?.response?.data?.error ||

@@ -14,7 +14,7 @@ type UpdateGuardParams = {
   isActive?: boolean;
 };
 
-type UpdateGuardResponse = {
+export type UpdateGuardResponse = {
   message: string;
   guard: Guard;
   // Guard Account Phase 4 - present only when this edit changed a still-

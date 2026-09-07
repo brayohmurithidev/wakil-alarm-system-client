@@ -29,12 +29,40 @@ describe("normalizePhoneNumber", () => {
     expect(normalizePhoneNumber("+254712345678")).toBe("+254712345678");
   });
 
-  it("does not invent a leading + for a number that never had one", () => {
-    expect(normalizePhoneNumber("0712345678")).toBe("0712345678");
+  // Guard Onboarding Acceptance Fix (Failure 1): this used to assert the
+  // opposite - "0712345678" normalized to itself, with no leading +, which
+  // is exactly what made isValidE164 reject every Kenyan local-format
+  // number an admin would actually type. Confirmed by physical staging
+  // testing against "0786839604". Kenya is the default country (matches
+  // the API's own lib/phone.ts) precisely so a local-format number IS
+  // resolved to its real E.164 form here, not left as bare digits.
+  it("resolves Kenyan local format (leading 0) to canonical E.164", () => {
+    expect(normalizePhoneNumber("0712345678")).toBe("+254712345678");
+  });
+
+  it("resolves a bare country-code prefix (no leading +) to canonical E.164", () => {
+    expect(normalizePhoneNumber("254712345678")).toBe("+254712345678");
+  });
+
+  it("resolves the exact acceptance-test number (0786839604) to +254786839604", () => {
+    expect(normalizePhoneNumber("0786839604")).toBe("+254786839604");
+  });
+
+  it("resolves a Kenyan 01xx number the same way as 07xx", () => {
+    expect(normalizePhoneNumber("0112345678")).toBe("+254112345678");
+  });
+
+  it("does not force a non-Kenyan E.164 number into Kenya - a number with its own + and country code is parsed as itself", () => {
+    expect(normalizePhoneNumber("+14155552671")).toBe("+14155552671");
   });
 
   it("trims surrounding whitespace", () => {
     expect(normalizePhoneNumber("  +254712345678  ")).toBe("+254712345678");
+  });
+
+  it("falls back to best-effort digit-stripping for input that cannot be parsed as a real number, rather than throwing", () => {
+    expect(normalizePhoneNumber("not-a-phone-number")).toBe("");
+    expect(normalizePhoneNumber("12345")).toBe("12345");
   });
 });
 
@@ -91,5 +119,72 @@ describe("phoneFieldSchema", () => {
     const result = phoneFieldSchema.safeParse("+14155552671");
     expect(result.success).toBe(true);
     expect(result.data).toBe("+14155552671");
+  });
+
+  // Guard Onboarding Acceptance Fix (Failure 1) - the required Kenyan
+  // formats, exercised through the actual schema every Guard/User form
+  // uses, not just the normalizer in isolation.
+  describe("Kenyan formats (Failure 1 acceptance criteria)", () => {
+    it("accepts local-format 07xx (the exact number physical staging testing rejected)", () => {
+      const result = phoneFieldSchema.safeParse("0786839604");
+      expect(result.success).toBe(true);
+      expect(result.data).toBe("+254786839604");
+    });
+
+    it("accepts local-format 01xx", () => {
+      const result = phoneFieldSchema.safeParse("0112345678");
+      expect(result.success).toBe(true);
+      expect(result.data).toBe("+254112345678");
+    });
+
+    it("accepts a bare 254... prefix with no leading +", () => {
+      const result = phoneFieldSchema.safeParse("254786839604");
+      expect(result.success).toBe(true);
+      expect(result.data).toBe("+254786839604");
+    });
+
+    it("accepts already-canonical +254...", () => {
+      const result = phoneFieldSchema.safeParse("+254786839604");
+      expect(result.success).toBe(true);
+      expect(result.data).toBe("+254786839604");
+    });
+
+    it("all four representations of the same number normalize identically", () => {
+      const variants = ["0786839604", "+254786839604", "254786839604", "0786 839 604"];
+      const normalized = variants.map((v) => phoneFieldSchema.safeParse(v));
+      expect(normalized.every((r) => r.success)).toBe(true);
+      const values = new Set(normalized.map((r) => (r.success ? r.data : null)));
+      expect(values.size).toBe(1);
+      expect([...values][0]).toBe("+254786839604");
+    });
+  });
+
+  describe("invalid / too-short / too-long values are still rejected", () => {
+    it("rejects a too-short local number", () => {
+      const result = phoneFieldSchema.safeParse("0712");
+      expect(result.success).toBe(false);
+      expect(result.error?.issues[0]?.message).toBe("Enter a valid phone number.");
+    });
+
+    it("rejects a too-long local number", () => {
+      const result = phoneFieldSchema.safeParse("07123456789012345");
+      expect(result.success).toBe(false);
+      expect(result.error?.issues[0]?.message).toBe("Enter a valid phone number.");
+    });
+
+    it("rejects a too-short E.164 number", () => {
+      const result = phoneFieldSchema.safeParse("+123");
+      expect(result.success).toBe(false);
+    });
+
+    it("rejects a too-long E.164 number", () => {
+      const result = phoneFieldSchema.safeParse("+1234567890123456789");
+      expect(result.success).toBe(false);
+    });
+
+    it("rejects a malformed country code (0 immediately after +)", () => {
+      const result = phoneFieldSchema.safeParse("+0786839604");
+      expect(result.success).toBe(false);
+    });
   });
 });
