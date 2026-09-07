@@ -128,7 +128,7 @@ export function CreateGuardDialog({
             <p className="text-xs text-muted-foreground mt-1">
               {t(
                 "guards.form.emailHint",
-                "The guard's login code is sent to this address.",
+                "The guard's temporary login code is delivered by email to this address and by SMS to the phone number above.",
               )}
             </p>
           </FormGroup>

@@ -73,6 +73,12 @@ export function EditGuardDialog({ guard, onOpenChange }: EditGuardDialogProps) {
       {
         onSuccess: (response) => {
           notify(response.message, { type: "success" });
+          // Guard Account Phase 4 - a separate, distinctly-typed toast so
+          // this reads as "one more thing to do", not part of the plain
+          // success confirmation the admin might glance past.
+          if (response.emailChangeNotice) {
+            notify(response.emailChangeNotice, { type: "warning" });
+          }
           onOpenChange(false);
         },
         onError: (err: any) => {
@@ -153,6 +159,21 @@ export function EditGuardDialog({ guard, onOpenChange }: EditGuardDialogProps) {
               disabled={isPending}
             />
           </FormGroup>
+
+          {/* Guard Account Phase 4 - read-only diagnostic, not an
+              editable field. hasPushToken means the guard's device has an
+              active push registration on file - it says nothing about
+              whether they're online right now (that's guard.isConnected,
+              shown elsewhere), so this is deliberately worded around
+              "registered", never "online"/"active". */}
+          {guard && (
+            <p className="text-xs text-muted-foreground -mt-2">
+              {t("guards.form.pushTokenLabel", "Guard App notifications")}:{" "}
+              {guard.hasPushToken
+                ? t("guards.form.pushTokenRegistered", "Registered")
+                : t("guards.form.pushTokenNotRegistered", "Not registered")}
+            </p>
+          )}
 
           {error && (
             <FormError>

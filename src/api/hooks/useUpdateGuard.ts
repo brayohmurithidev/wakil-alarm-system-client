@@ -17,6 +17,15 @@ type UpdateGuardParams = {
 type UpdateGuardResponse = {
   message: string;
   guard: Guard;
+  // Guard Account Phase 4 - present only when this edit changed a still-
+  // pending guard's email. The already-issued login code was sent to the
+  // previous address and this endpoint deliberately does not re-send it
+  // (a profile edit must never silently become a credential-issuance
+  // event) - see updateGuardByIdController (API repo) for the full
+  // reasoning. The dashboard surfaces this text so the admin knows to use
+  // Resend Login Code themselves if the guard needs the code at the
+  // corrected address.
+  emailChangeNotice?: string;
 };
 
 const updateGuardFn = async ({
