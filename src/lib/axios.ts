@@ -63,10 +63,40 @@ export class InvalidSessionError extends Error {
   }
 }
 
+// Session Diagnostics Phase - the refresh endpoint now sends a stable
+// `code` (ADMIN_REFRESH_ERROR_CODE, API repo's lib/adminTokens.ts)
+// alongside its existing human-readable `error` text, spelled identically
+// to SessionClearReason's own values on purpose. Matching on `code` first
+// is what makes REFRESH_TOKEN_REUSE_DETECTED distinguishable at all - it
+// used to return the exact same 401 body as an ordinary unknown/invalid
+// token. The status/message-based fallback below only matters against a
+// backend response that, for whatever reason, didn't carry `code` (an
+// older cached deploy during a rollout, for instance) - it cannot produce
+// REFRESH_TOKEN_REUSE_DETECTED on its own, since the two conditions were
+// never distinguishable by status/message alone.
+const KNOWN_SESSION_CLEAR_REASONS = new Set<SessionClearReason>([
+  "REFRESH_TOKEN_INVALID",
+  "REFRESH_TOKEN_EXPIRED",
+  "REFRESH_TOKEN_REUSE_DETECTED",
+  "ACCOUNT_DISABLED",
+  "SESSION_MISSING",
+  // USER_LOGOUT deliberately excluded - it is only ever set by this app's
+  // own explicit logout() call, never derived from a server response.
+]);
+
 export function classifyRefreshFailure(error: unknown):
   | SessionClearReason
   | null {
   if (!axios.isAxiosError(error)) return null;
+
+  const code = error.response?.data?.code;
+  if (
+    typeof code === "string" &&
+    KNOWN_SESSION_CLEAR_REASONS.has(code as SessionClearReason)
+  ) {
+    return code as SessionClearReason;
+  }
+
   if (error.response?.status === 403) return "ACCOUNT_DISABLED";
   if (error.response?.status !== 401) return null;
 

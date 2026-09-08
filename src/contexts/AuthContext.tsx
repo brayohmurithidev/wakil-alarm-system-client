@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { createContext, useContext, useEffect, useState } from "react";
 
 import type { AdminUser } from "@/api/types";
@@ -26,6 +27,15 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  // Session Diagnostics Phase, Part 5 — separate from the session-reliability
+  // diagnosis above: without this, React Query's cache (dashboard lists,
+  // report data, anything else fetched with useQuery) survives past logout
+  // and past a forced session invalidation, so the next admin to use the
+  // same browser/tab can briefly see the previous admin's cached data before
+  // their own queries refetch. queryClient is a stable reference from
+  // QueryClientProvider (see main.tsx), so closing over it inside the
+  // effect below without listing it in the dependency array is safe.
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     const clearSession = (reason: SessionClearReason) => {
@@ -36,6 +46,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem("token");
       localStorage.removeItem("adminUser");
       setAdminUser(null);
+      // Forced invalidation (401/refresh failure) — the cache may hold data
+      // scoped to whichever admin was just signed out; nothing here is safe
+      // to keep for whoever ends up authenticated next.
+      queryClient.clear();
     };
     registerUnauthorizedHandler(clearSession);
 
@@ -82,7 +96,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
     window.addEventListener("storage", handleStorage);
     return () => window.removeEventListener("storage", handleStorage);
-  }, []);
+    // queryClient added for the Part 5 cache-clearing above — it's a stable
+    // reference for the life of the app (see main.tsx), so listing it here
+    // does not cause the effect to re-run; this only satisfies the linter.
+  }, [queryClient]);
 
   const login = async (email: string, password: string) => {
     const response = await axiosInstance.post("/api/auth/login", {
@@ -112,6 +129,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem("token");
     localStorage.removeItem("adminUser");
     setAdminUser(null);
+    // Explicit logout — same reasoning as clearSession above.
+    queryClient.clear();
   };
 
   return (

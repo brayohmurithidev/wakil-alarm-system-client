@@ -1,23 +1,39 @@
 import { environment } from "@/config";
 
+// Session Diagnostics Phase - REFRESH_TOKEN_REUSE_DETECTED added. Deliberately
+// spelled identically to the API's own ADMIN_REFRESH_ERROR_CODE.REFRESH_TOKEN_REUSE_DETECTED
+// (src/lib/adminTokens.ts, API repo) so a server-sent `code` can be used as
+// this value directly - see classifyRefreshFailure in axios.ts. This is the
+// one SessionClearReason the Control Center session-reliability audit
+// specifically needed distinguishable: previously the backend returned the
+// identical 401 body for "this token is unknown/invalid" and "this token
+// WAS valid but was just replayed after rotation, and every session for the
+// account has now been revoked" - the second one is far more consequential
+// (it silently ends every other device's session too) and deserves its own
+// category in diagnostics rather than reading as an ordinary invalid token.
 export type SessionClearReason =
   | "REFRESH_TOKEN_INVALID"
   | "REFRESH_TOKEN_EXPIRED"
+  | "REFRESH_TOKEN_REUSE_DETECTED"
   | "USER_LOGOUT"
   | "ACCOUNT_DISABLED"
   | "SESSION_MISSING";
 
 // The canonical reason enum for AUTH_LOGOUT_TRIGGERED diagnostics.
 // SessionClearReason is more granular (it also drives which localStorage
-// keys/UI messaging apply); this collapses it onto the 4 categories that
+// keys/UI messaging apply); this collapses it onto the categories that
 // matter when auditing WHY a logout happened. ACCOUNT_DISABLED folds into
 // "refresh_invalid" here (the raw SessionClearReason is still logged
 // alongside it via `rawReason`) since both mean "this session can never be
 // resumed by refreshing" — the distinction this enum exists to capture.
+// REFRESH_TOKEN_REUSE_DETECTED gets its own category rather than folding
+// into "refresh_invalid" - collapsing it back in would defeat the entire
+// point of adding it.
 export type LogoutTriggerReason =
   | "explicit_logout"
   | "refresh_invalid"
   | "refresh_expired"
+  | "refresh_reuse_detected"
   | "session_missing";
 
 export function toLogoutTriggerReason(
@@ -28,6 +44,8 @@ export function toLogoutTriggerReason(
       return "explicit_logout";
     case "REFRESH_TOKEN_EXPIRED":
       return "refresh_expired";
+    case "REFRESH_TOKEN_REUSE_DETECTED":
+      return "refresh_reuse_detected";
     case "SESSION_MISSING":
       return "session_missing";
     case "REFRESH_TOKEN_INVALID":
