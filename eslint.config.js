@@ -45,4 +45,17 @@ export default [
       },
     },
   },
+  // Root-cause audit (2026-09-09) - scripts/ runs under plain Node (build
+  // tooling, not the browser bundle), so it needs Node globals
+  // (process/console/etc.) rather than the browser globals the app source
+  // above uses. Scoped narrowly to this directory so nothing about the
+  // app's own linting changes.
+  {
+    files: ["scripts/**/*.mjs"],
+    languageOptions: {
+      ecmaVersion: "latest",
+      sourceType: "module",
+      globals: globals.node,
+    },
+  },
 ];

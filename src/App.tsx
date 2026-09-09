@@ -4,6 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 
 import { AlarmNotification } from "@/components/AlarmNotification";
 import { NotificationsContainer } from "@/components/Alert/NotificationsContainer";
+import { googleMapsApiKey } from "@/config";
 import {
   AlarmNotificationProvider,
   useAlarmNotification,
@@ -30,8 +31,6 @@ function AppContent() {
 }
 
 function App() {
-  const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? "";
-
   return (
     <APIProvider apiKey={googleMapsApiKey} libraries={googleMapsLibraries}>
       <BrowserRouter>

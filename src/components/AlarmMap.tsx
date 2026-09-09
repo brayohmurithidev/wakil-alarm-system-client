@@ -22,6 +22,7 @@ import {
   type OperationalStatus,
 } from "@/lib/guardState";
 import { focusTargetKey } from "@/lib/mapCamera";
+import { addMapListenerOnce, observeResize } from "@/lib/mapObserverLifecycle";
 
 function timeAgo(iso: string): string {
   const secs = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
@@ -313,19 +314,21 @@ function MapResizeHandler() {
   const map = useMap();
 
   useEffect(() => {
-    if (!map || typeof ResizeObserver === "undefined") return;
-    const container = map.getDiv();
+    if (!map) return;
     let frame: number | null = null;
-    const observer = new ResizeObserver(() => {
+    // map.getDiv() is only ever safe to hand to ResizeObserver.observe()
+    // while the underlying map is still actually attached - see
+    // mapObserverLifecycle.ts's header for the exact race this guards
+    // against. observeResize() itself checks that before calling .observe().
+    const { stop } = observeResize(map.getDiv(), () => {
       if (frame !== null) window.cancelAnimationFrame(frame);
       frame = window.requestAnimationFrame(() => {
         google.maps.event.trigger(map, "resize");
         frame = null;
       });
     });
-    observer.observe(container);
     return () => {
-      observer.disconnect();
+      stop();
       if (frame !== null) window.cancelAnimationFrame(frame);
     };
   }, [map]);
@@ -455,12 +458,11 @@ function TilesLoadedHandler({ onLoaded }: { onLoaded: () => void }) {
   const map = useMap();
 
   useEffect(() => {
-    if (!map) return;
-    const listener = map.addListener("tilesloaded", () => {
-      onLoaded();
-      listener.remove();
-    });
-    return () => listener.remove();
+    // addMapListenerOnce's stop() tolerates `listener` being undefined for
+    // any reason, and being called twice (once when "tilesloaded" fires,
+    // once from this cleanup on unmount) - see mapObserverLifecycle.ts.
+    const { stop } = addMapListenerOnce(map, "tilesloaded", onLoaded);
+    return stop;
   }, [map, onLoaded]);
 
   return null;
@@ -680,6 +682,15 @@ export function AlarmMap({
       : DEFAULT_CENTER;
 
   const [tilesLoaded, setTilesLoaded] = useState(false);
+  // Stable across every AlarmMap re-render (not `() => setTilesLoaded(true)`
+  // inline at the call site below) - TilesLoadedHandler's effect depends on
+  // this reference, and AlarmMap re-renders constantly (every alarm/guard
+  // refetch, every socket event). An unstable callback here doesn't just
+  // waste work: it makes TilesLoadedHandler tear down and recreate its
+  // Google Maps listener on nearly every render instead of once per real
+  // mount, which is what made the underlying "torn-down listener" race
+  // actually reachable in production. See mapObserverLifecycle.ts.
+  const handleTilesLoaded = useCallback(() => setTilesLoaded(true), []);
 
   // Camera ownership: see src/lib/mapCamera.ts for the root cause and the
   // decision logic itself. focusKey identifies WHAT the camera should be
@@ -733,7 +744,7 @@ export function AlarmMap({
         onZoomChanged={handleUserCameraEvent}
         onCenterChanged={handleUserCameraEvent}
       >
-        <TilesLoadedHandler onLoaded={() => setTilesLoaded(true)} />
+        <TilesLoadedHandler onLoaded={handleTilesLoaded} />
         <MapResizeHandler />
         <MapFocusHandler
           alarms={alarms}
